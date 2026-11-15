@@ -47,7 +47,7 @@ New to this? [notebooks/tiny_tour.ipynb](notebooks/tiny_tour.ipynb) is a guided 
 one CPU thread ([open in Colab](https://colab.research.google.com/github/exea-labs/ExeaLM/blob/main/notebooks/tiny_tour.ipynb)).
 Train the `tiny` model, look at its circuits, switch some off, and watch two agents learn to talk over the board.
 
-Full data walkthrough (filter, tokenizer, pack, then train the 17M `small` preset, which fits on a laptop or a free Colab GPU): [docs/data.md](docs/data.md).
+Full data walkthrough (filter, tokenizer, pack, then train the 18M `small` preset, which fits on a laptop or a free Colab GPU): [docs/data.md](docs/data.md).
 
 ## The plan
 
@@ -206,7 +206,7 @@ Small-scale tests on a Mac Studio, all in [results/README.md](results/README.md)
 
 ## To-do list
 
-Starting points. Almost everything here runs on a laptop or a free Google Colab GPU, using the `tiny` preset or the 17M-parameter `small` preset. Items marked **(starter)** are good first tasks. Items marked **(GPU)** need bigger GPUs: maintainers run those on Exea's compute, and you can still write and test the code on a small model. Many items are GitHub issues with details and a definition of done: [good first issues](https://github.com/exea-labs/ExeaLM/issues?q=is%3Aopen+label%3A%22good+first+issue%22) and [help wanted](https://github.com/exea-labs/ExeaLM/issues?q=is%3Aopen+label%3A%22help+wanted%22). To claim an item, comment on its issue, say so in #exealm, or open a draft pull request. Anything that changes the model or the training has to win a fair small-scale comparison first ([CONTRIBUTING.md](CONTRIBUTING.md)).
+Starting points. Almost everything here runs on a laptop or a free Google Colab GPU, using the `tiny` preset or the 18M-parameter `small` preset. Items marked **(starter)** are good first tasks. Items marked **(GPU)** need bigger GPUs: maintainers run those on Exea's compute, and you can still write and test the code on a small model. Many items are GitHub issues with details and a definition of done: [good first issues](https://github.com/exea-labs/ExeaLM/issues?q=is%3Aopen+label%3A%22good+first+issue%22) and [help wanted](https://github.com/exea-labs/ExeaLM/issues?q=is%3Aopen+label%3A%22help+wanted%22). To claim an item, comment on its issue, say so in #exealm, or open a draft pull request. Anything that changes the model or the training has to win a fair small-scale comparison first ([CONTRIBUTING.md](CONTRIBUTING.md)).
 
 ### Swarms and agents (`exealm/model/board.py`, `exealm/data/loader.py`, [docs/swarms.md](docs/swarms.md))
 - [x] Proof of mechanism: agents learn to pass facts over the board during training, 99.8% vs 1.5% with the board cut ([results](results/README.md#1-agents-learn-to-talk-through-the-board-during-training-experimentsswarm_relaypy))

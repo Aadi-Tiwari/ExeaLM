@@ -85,7 +85,7 @@ python -m exealm.data.tokenizer data/dedup/*.jsonl.gz --vocab 49152 --out tokeni
 python -m exealm.data.pack data/dedup/<train files> --tokenizer tokenizer --out data/packed/train
 python -m exealm.data.pack data/dedup/<val file>    --tokenizer tokenizer --out data/packed/val
 
-# 6. train the 17M "small" model on it (laptop or a free Colab GPU)
+# 6. train the 18M "small" model on it (laptop or a free Colab GPU)
 python -m exealm.train.pretrain --preset small --data data/packed/train --val data/packed/val --seq 256 --steps 2000
 ```
 

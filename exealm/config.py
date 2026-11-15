@@ -7,7 +7,9 @@ Presets:
     "small"       18M parameters (13M embedding table) with the same vocabulary, hybrid: for real-data experiments on
                   a laptop or a free Colab GPU
     "small-tonn"  the same size, every layer TONN (the base the experiment scripts start from)
-    "tiny"        for tests and quick checks on synthetic data Every number here is a starting point, not a decision: changing them is one of the easiest ways to contribute
+    "tiny"        for tests and quick checks on synthetic data
+
+Every number here is a starting point, not a decision: changing them is one of the easiest ways to contribute
 (see docs/ideas.md), as long as the change wins a fair comparison first (CONTRIBUTING.md).
 """
 import json
