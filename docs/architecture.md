@@ -7,8 +7,10 @@ tokens -> embedding -> [ TONN layer -> gated MLP ] x 14 -> norm -> next-token pr
 ```
 
 The `100m` preset (`exealm/config.py`): width 640, 14 layers, 20 circuits per layer of 32 channels each, MLP width
-1,704, a 49,152-token vocabulary with tied input and output embeddings. That comes to 101M parameters, 31M of them in
-the embedding table. The Llama-style baseline with the same width, depth and MLP has 100M.
+1,704, a 49,152-token vocabulary with tied input and output embeddings. That comes to 104.8M parameters, 31M of them in
+the embedding table (101.1M before gated attention and QK-norm became the default, and for the all-TONN `100m-tonn`
+preset). The Llama-style baseline with the same width, depth and MLP has 100.2M. With the 32,768-token tokenizer the
+small-scale tests chose, the same model has 94.3M and the baseline 89.7M.
 
 ## The hybrid (the default)
 

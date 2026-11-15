@@ -4,7 +4,7 @@ Presets:
     "100m"        the model we plan to train: about 0.1B parameters (31M of them the embedding table), on about 100B
                   tokens; a hybrid (every third layer TONN, the others gated attention with QK-norm)
     "100m-tonn"   the same size, every layer TONN
-    "small"       17M parameters (13M embedding table) with the same vocabulary, hybrid: for real-data experiments on
+    "small"       18M parameters (13M embedding table) with the same vocabulary, hybrid: for real-data experiments on
                   a laptop or a free Colab GPU
     "small-tonn"  the same size, every layer TONN (the base the experiment scripts start from)
     "tiny"        for tests and quick checks on synthetic data Every number here is a starting point, not a decision: changing them is one of the easiest ways to contribute

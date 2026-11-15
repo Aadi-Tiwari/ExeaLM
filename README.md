@@ -334,7 +334,7 @@ Starting points. Almost everything here runs on a laptop or a free Google Colab 
 
 ```
 exealm/
-  config.py              model sizes: "100m" (the real one, 105M parameters), "small" (17M, laptop/Colab), "tiny" (tests)
+  config.py              model sizes: "100m" (the real one, 105M parameters), "small" (18M, laptop/Colab), "tiny" (tests)
   model/
     tonn.py              the TONN layer and the full model
     circuits.py          the circuit menu
