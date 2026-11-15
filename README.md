@@ -220,6 +220,8 @@ Starting points. Almost everything here runs on a laptop or a free Google Colab 
 - [ ] Related swarms: group documents that are near each other in the model's own retrieval space
 - [ ] Cross-lingual swarms: pair Japanese and English Wikipedia articles on the same topic (interlanguage links) ([#23](https://github.com/exea-labs/ExeaLM/issues/23))
 - [ ] Swarm sizes that vary within a run (2 to 8)
+- [x] A weight-alter circuit (`WA`, `exealm/model/alter.py`, opt-in): a slot that emits rank-1 changes to an MLP weight matrix of its own agent or of the other agents in its swarm, learned from the ordinary loss; the changes last for one pass ([docs/memory.md](docs/memory.md))
+- [ ] Weight changes that persist across passes (a store like the persistent board), and a safety review before any edit reaches stored parameters
 - [ ] Agent identity: a role or id signal on posts so agents can specialize
 - [ ] Retrieval division of labor: do agents in a swarm pull different chunks? Try rewarding it
 - [ ] Swarm-aware multi-GPU training, keeping each swarm on one GPU (testable on a CPU with two processes)

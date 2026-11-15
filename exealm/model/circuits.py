@@ -31,8 +31,10 @@ CIRCUITS = {
     "OS": (2, False, True, "oscillating memory (S4D-like): complex z_t = r e^{iw} z_{t-1} + A_t, times silu(B_t)"),
     "RG": (3, False, False, "retrieval from the read-only datastore, with the model's own embeddings (retrieval.py)"),
     "AG": (3, False, False, "agent board: post messages, read other agents' messages (board.py)"),
+    "WA": (3, False, False, "weight alter: change a weight matrix of this agent or of its swarm (alter.py); "
+                            "not in the default menu"),
 }
-MEMORY_CIRCUITS = ("RG", "AG")
+MEMORY_CIRCUITS = ("RG", "AG", "WA")
 
 
 def shift(U, lags):

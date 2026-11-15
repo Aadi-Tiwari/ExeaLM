@@ -26,9 +26,15 @@ class MLP(nn.Module):
         self.wi = nn.Linear(d, 2 * hidden, bias=False)
         self.wo = nn.Linear(hidden, d, bias=False)
 
-    def forward(self, x):
+    def forward(self, x, edits=None):
+        """edits: weight changes to W_o from weight-alter circuits (exealm/model/alter.py), or None."""
         a, b = self.wi(self.norm(x)).chunk(2, -1)
-        return x + self.wo(F.silu(a) * b)
+        hidden = F.silu(a) * b
+        out = self.wo(hidden)
+        if edits:
+            from .alter import apply_edits
+            out = out + apply_edits(hidden, edits)
+        return x + out
 
 
 def rotate(x, base=10000.0):

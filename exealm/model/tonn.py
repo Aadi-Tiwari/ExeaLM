@@ -19,6 +19,7 @@ from ..config import ModelConfig
 from ..memory import MemoryContext
 from . import circuits as Cc
 from .baseline import Attention, mixer  # noqa: F401
+from .alter import WeightAlter
 from .board import BoardCircuit
 from .common import MLP, RMSNorm
 from .retrieval import ChunkEncoder, RetrievalCircuit
@@ -64,6 +65,8 @@ def slot_cost(spec, cfg, T):
         return proj + k * Lc * (d * e + 4 * e * e + 2 * e * h) / cfg.chunk + 2 * k * Lc * h
     if t == "AG":
         return proj + 2 * h * cfg.swarm_size * T / (cfg.board_chunk or cfg.chunk)
+    if t == "WA":                                    # its share of applying the changes in the target MLP
+        return proj + (cfg.ffn_width + d) * cfg.swarm_size * T / (cfg.board_chunk or cfg.chunk)
     return proj + 6 * h
 
 
@@ -82,6 +85,8 @@ class TONNLayer(nn.Module):
         self.register_buffer("scale", torch.zeros(K))     # running output size per slot (0: not measured yet)
         self.rg = RetrievalCircuit(cfg)
         self.ag = BoardCircuit(cfg)
+        # the weight-alter circuit exists only when the config can use it, so older checkpoints load unchanged
+        self.wa = WeightAlter(cfg) if ("WA" in cfg.menu or "WA" in cfg.pinned) else None
         nn.init.normal_(self.out.weight, std=0.5 / math.sqrt(K * h))
         self.specs = [None] * K
         for k, s in enumerate(specs):
@@ -138,6 +143,8 @@ class TONNLayer(nn.Module):
                 y = self.rg(S, mem, self, slots)
             elif t == "AG":
                 y = self.ag(S, mem, self.index, slots)
+            elif t == "WA":
+                y = self.wa(S, mem, self, slots)
             else:
                 y = Cc.run(t, S, pl["lags"][a:c], lam[a:c], beta[a:c])
             outs.append(y)
@@ -195,10 +202,11 @@ class ExeaLM(nn.Module):
                 x = self.attn[ai](x)
                 ai += 1
             else:
+                mem.cache["layer"] = i
                 x = self.layers[ti](x, mem)
                 ti += 1
             if self.mlps is not None:
-                x = self.mlps[i](x)
+                x = self.mlps[i](x, mem.cache.get("wa", {}).get(i))
         logits = self.head(self.norm(x))
         loss = None
         if targets is not None:
