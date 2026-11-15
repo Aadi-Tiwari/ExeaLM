@@ -92,3 +92,118 @@ python -m exealm.train.pretrain --preset small --data data/packed/train --val da
 The open data tasks are in the README's [to-do list](../README.md#to-do-list): counting tokens,
 decontamination, a Japanese quality classifier, swarm construction, the retrieval datastore, and scaling the
 download.
+
+### Checking packed text against held-out benchmarks
+
+`exealm.data.decontam` scans packed training sources on CPU and writes filtered
+copies plus a per-source `report.json`. Pack held-out benchmark text with the same
+exact tokenizer first; benchmark inputs should contain the questions, choices,
+reference answers or other text intended for exclusion, as appropriate to that
+evaluation. Keep benchmarks separate so the report identifies each one.
+
+```bash
+python -m exealm.data.decontam data/packed/web data/packed/code \
+  --benchmark hellaswag=data/benchmarks/hellaswag \
+  --benchmark gsm8k=data/benchmarks/gsm8k \
+  --ngram 13 --min_matches 1 --out data/decontaminated
+```
+
+Each source gets its own numbered output directory with `tokens.bin`,
+`offsets.npy` and updated `meta.json`; document order and complete token sequences
+are preserved for retained documents. The command refuses to overwrite an output
+directory. Training data is memory-mapped; the exact benchmark n-gram index lives
+in RAM. Tokenizer JSON hashes must agree across all inputs (or all use `bytes`).
+Tokenizer paths stored by the packer must still be accessible when running this
+command. Use the original working directory for relative tokenizer paths.
+
+The default drops a document with any exact 13-token overlap. These are tokenizer
+tokens, **not words** (UTF-8 bytes with `--tokenizer bytes`). No window crosses a
+document boundary or includes a trailing end-of-text marker. `--min_matches`
+counts matching window occurrences against each benchmark separately, including
+repeated occurrences. Reports count documents meeting this threshold per benchmark;
+a document matching several benchmarks is dropped once. Benchmark entries with no
+eligible windows are reported with zero windows. All-dropped sources produce empty
+shards; omit those sources when constructing a training loader.
+
+This is the packed-shard filtering part of issue #20. Download/schema adapters for
+HellaSwag, ARC, MMLU, GSM8K, HumanEval and JCommonsenseQA remain to be supplied and
+validated against their evaluation configurations. A successful scan only establishes
+exact token overlap for the benchmark text provided; it does not establish semantic
+or paraphrase decontamination. Select thresholds and text fields explicitly before
+reporting model results. This command does not change the default training mix.
+### Held-out benchmark inputs for decontamination
+
+`python -m exealm.data.benchmarks` exports exclusion text using explicit schemas,
+not the generic training-data extractor. Install `pip install -e '.[data]'` first.
+
+| Export name | Dataset | Configuration / split | License stated by dataset card |
+|---|---|---|---|
+| `hellaswag` | [Rowan/hellaswag](https://huggingface.co/datasets/Rowan/hellaswag) | default / validation | Not confirmed in card metadata; review upstream terms before redistribution |
+| `arc_easy` | [allenai/ai2_arc](https://huggingface.co/datasets/allenai/ai2_arc) | ARC-Easy / test | CC-BY-SA-4.0 |
+| `arc_challenge` | [allenai/ai2_arc](https://huggingface.co/datasets/allenai/ai2_arc) | ARC-Challenge / test | CC-BY-SA-4.0 |
+| `mmlu` | [cais/mmlu](https://huggingface.co/datasets/cais/mmlu) | all / test | MIT |
+| `gsm8k` | [openai/gsm8k](https://huggingface.co/datasets/openai/gsm8k) | main / test | MIT |
+| `humaneval` | [openai/openai_humaneval](https://huggingface.co/datasets/openai/openai_humaneval) | openai_humaneval / test | MIT |
+| `jcommonsenseqa` | [sbintuitions/JCommonsenseQA](https://huggingface.co/datasets/sbintuitions/JCommonsenseQA) | default / validation | CC-BY-SA-4.0 |
+
+HellaSwag and JCommonsenseQA use their public validation sets. ARC includes separate
+Easy and Challenge exports. These selections must match the evaluation being
+reported; they do not cover private tests, other splits or benchmark variants.
+Dataset cards and their licenses were checked on 2026-11-14. Exported benchmark
+text is for exclusion, never added to a training mix or committed to this repository.
+
+```bash
+python -m exealm.data.benchmarks --benchmark gsm8k --out data/benchmarks/gsm8k
+python -m exealm.data.pack data/benchmarks/gsm8k/text.jsonl.gz \
+  --tokenizer tokenizer --out data/benchmarks/gsm8k-packed
+# Feed gsm8k-packed to exealm.data.decontam's --benchmark gsm8k=... option (PR #41).
+```
+
+Repeat with each export name in the table. Resolve `main` to a dataset commit before
+streaming, or pass `--revision COMMIT` to reproduce an earlier export. Each new output
+directory contains `text.jsonl.gz` plus a manifest recording the resolved revision,
+source URL, split, row and segment counts, stated license, and compressed-file SHA-256.
+`--limit 3` is useful for a smoke test; it always sets `sample: true` and provides no
+claim of full benchmark coverage. Omit `--limit` for a full split. A malformed row
+fails the export with its index; partial exports are not published and existing
+outputs are not overwritten.
+
+Raw questions, every answer option, GSM8K reasoning/answers, and HumanEval prompts,
+solutions and test text are preserved as separate documents. HellaSwag also includes
+each context-plus-ending; HumanEval includes prompt-plus-solution to catch code
+spanning that boundary. Code is treated purely as text and never executed. Unrelated
+answer options are never joined into an artificial n-gram. This is an explicit raw
+field policy, not a claim to reproduce every harness prompt template or normalized
+benchmark variant. Exact token-overlap filtering retains the limitations documented
+by the decontamination tool, especially short segments and paraphrases.
+### K2 pretraining and SFT subset formatters
+
+The current releases of all **24 subsets** in `sources.K2` provide a preformatted
+`text` column. Their chat/reasoning/code content is already serialized upstream;
+there is no need to infer a new conversation schema or append metadata fields.
+`formatters.K2_FORMATTERS` registers a named callable for each repository/subset,
+with shared validation of that verified column. `download hf` selects the registered
+formatter for known K2 repositories and refuses unknown subsets. Other repositories
+continue to use the generic extractor.
+
+Valid text is preserved byte-for-byte as a Python string, including existing role
+markers, line breaks, leading whitespace and code indentation. Blank, missing and
+non-string text fields are dropped. A malformed K2 row can no longer fall through
+to a metadata description, guessed question/answer pair or stringified object.
+`--max_rows` counts retained documents and must be positive. These formatters do
+not choose a new chat template, filter valid content, or change mix proportions.
+
+Sources and card licenses (checked 2026-11-14):
+
+- [TxT360-v2](https://huggingface.co/datasets/IFM/TxT360-v2): CC-BY-4.0; 3 subsets.
+- [Pretrain-Behaviors](https://huggingface.co/datasets/IFM/Pretrain-Behaviors): Apache-2.0; 7 subsets.
+- [Math-Reasoning](https://huggingface.co/datasets/IFM/Math-Reasoning): Apache-2.0; 5 subsets.
+- [Code-Reasoning](https://huggingface.co/datasets/IFM/Code-Reasoning): Apache-2.0; 7 subsets.
+- [SFT-Reasoning](https://huggingface.co/datasets/IFM/SFT-Reasoning): Apache-2.0; 2 subsets.
+
+Two live rows per subset were checked against their public schemas; every retained
+row matched the original `text` exactly. Offline fixtures use invented text with
+those schemas, not copied corpus content. Results/revisions are recorded in
+`results/k2_formatters/`. This covers the pretraining/SFT subset list in `sources.K2`.
+The separately listed guru-RL release requires a task/reward-aware RL loader; it is
+outside this text-formatting registry and is not claimed as complete here.

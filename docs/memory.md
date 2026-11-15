@@ -91,3 +91,111 @@ Open problems:
   (HTTP or Redis).
 - **Safety.** A shared board is an input channel. Agents should treat other agents' messages as information, not as
   instructions. Post-training data should teach that.
+
+### Sampling datastore chunks
+
+`Datastore.from_shards(shards, n_chunks, chunk_len, seed=0)` samples uniformly
+with replacement over every valid window contained in one document. A document of
+length L contributes `max(0, L - chunk_len + 1)` windows, so longer documents are
+weighted by their eligible windows rather than chosen with equal probability.
+The final window of the final document is included. Document IDs remain the row
+indices in the shard offsets, including when earlier documents are too short.
+
+Sampling uses cumulative valid-window counts and terminates without rejection
+loops. Positive sizes are required; if no document is long enough it raises a
+`ValueError` instead of waiting indefinitely. A fixed seed reproduces samples with
+this implementation. The mapping from seeds to sampled windows differs from the
+previous rejection sampler; reproducing a checkpoint created with that older
+sampler requires the older code and data, since checkpoints retain retrieval keys
+but do not include the sampled datastore tokens.
+## Sharing an inference board over HTTP
+
+Install `pip install -e '.[board]'`, then run:
+
+```bash
+python -m exealm.memory.board_server --host 127.0.0.1 --port 8000 --capacity 4096
+```
+
+Each agent uses the same URL and board ID, with its own globally unique nonnegative
+agent ID:
+
+```python
+import os
+from exealm.memory.board_http import RemoteAgentBoard
+
+board = RemoteAgentBoard("http://127.0.0.1:8000", board_id="swarm-1",
+                         token=os.environ.get("EXEALM_BOARD_TOKEN"))
+# Pass board through MemoryContext(board=board, agent_ids=..., write_board=True).
+```
+
+`post`, `read` and `merge` follow the persistent `AgentBoard` interface. Only complete
+chunks are posted; reposting an author's chunk replaces it and makes it newest.
+Capacity is per channel. Reads preserve slot order, padding, author IDs and validity
+masks, and return tensors on the requested device. Each read fetches current server
+state. Network errors propagate to the caller. Merge accepts local or remote boards.
+
+Run one server process/worker: it owns in-memory state and serializes each request.
+Use a different board ID for each independent swarm, and compatible model weights
+and slot layouts within a board. Separate agents may run concurrently, but their
+multi-layer forward passes are not a single atomic transaction. Restarting the server
+clears its boards. This service is for inference; messages are detached as with the
+local persistent board, so gradients do not cross processes.
+
+For other machines, set `EXEALM_BOARD_TOKEN` on the server and clients and bind to a
+private interface (`--host ...`). Non-loopback CLI bindings require the token. Use a
+trusted network or HTTPS reverse proxy: the built-in HTTP transport is unencrypted.
+JSON tensor payloads avoid deserializing executable pickle data. The server validates
+message widths and finite float32 values before applying a whole merge request.
+## Optional CPU FAISS datastore
+
+Install `pip install -e '.[faiss]'` and use the optional class explicitly:
+
+```python
+from exealm.memory.faiss import FaissDatastore
+
+library = FaissDatastore(tokens, doc_ids, nlist=128, pq_m=8, nbits=8, nprobe=16)
+library.refresh(model.encoder, model.emb, step=step)
+# Use it as MemoryContext(datastore=library, ...).
+```
+
+The default `Datastore` remains exact. The optional index uses IVF-PQ and inner
+product search on the encoder's keys; it does not normalize keys behind the caller's
+back. `pq_m` must divide the key width. Training requires at least
+`max(nlist, 2**nbits)` keys, including when a smaller `train_size` is specified.
+For tiny tests, reduce `nlist` and `nbits`. Representative corpora generally need
+many more training examples than that minimum; the default samples up to 50,000.
+Every `refresh()` rebuilds the quantizers and index from the current encoder keys.
+If replacing `keys` or `doc_ids` manually, call `rebuild_index()` before searching.
+A failed rebuild invalidates the previous index.
+The index returns up to `rerank * k` eligible candidates (`rerank=4` by default);
+these are re-scored with the original float32 keys and the top k are returned.
+This reduces PQ ranking error but cannot recover neighbors outside that candidate set.
+
+Document exclusion uses FAISS's native ID selector **inside** the IVF scan, before
+top-k selection. This avoids a fixed over-fetch factor: even 4k candidates can all
+belong to the excluded document. Queries with the same excluded document are batched.
+If a query has too few valid hits, `nprobe` doubles until it has enough or all lists
+have been searched. This guarantees filling up to the number of eligible chunks,
+without falling back to the exact PyTorch search. Missing entries have index zero
+and a false validity mask; callers must respect the mask, just as with exact search.
+Increasing probes cannot remove PQ quantization error, so approximate and exact
+neighbors need not match. FAISS's own explanation and selector interface are in
+[the index guide](https://github.com/facebookresearch/faiss/wiki/Faiss-indexes) and
+[per-query parameters](https://github.com/facebookresearch/faiss/wiki/Setting-search-parameters-for-one-query).
+
+This backend's index runs on CPU. Queries transfer to CPU and returned IDs/masks
+transfer to the query device; live re-encoding of retrieved text still carries the
+encoder gradients. The original float32 keys remain available for checkpointing,
+so total datastore memory is **not** reduced to the compressed index size. Exclusion
+also keeps a CPU grouping of chunk IDs by document. This is an optional search
+backend, not a sharded or disk-backed billion-token library, and the pretraining CLI
+still uses exact search. Compare it on the intended corpus before selecting it.
+
+On macOS, some pip wheel combinations bundle two incompatible OpenMP runtimes.
+Use compatible builds sharing one runtime (for example conda-forge `pytorch` and
+`faiss-cpu`) if this occurs; do not bypass the runtime's duplicate-library check.
+
+Run `python -m experiments.faiss_datastore --keys 1000000 --queries 256 --threads 4`
+for recall@4 and median search latency against the exact backend, with and without
+document exclusion. The script records index construction time and serialized size
+separately. Synthetic timings do not establish downstream language-model quality.
