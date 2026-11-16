@@ -170,7 +170,33 @@ There are two candidate 100B-token mixes: DATA.md's (English-heavier) and mix pr
 
 ## Results so far
 
-Small-scale tests on a Mac Studio, all in [results/README.md](results/README.md):
+Same-size models, same data, same steps (3,000 steps, about 49M tokens, one AMD MI300X). Bits per byte on held-out
+English, Japanese and code; lower is better. Every seed is in [results/funding/README.md](results/funding/README.md).
+
+| Size | ExeaLM hybrid | ExeaLM hybrid, original starting menu | Llama + gated attention + QK-norm | Qwen3.5-style (our build) | Llama |
+|---|---|---|---|---|---|
+| 13M | **1.511** (10 seeds) | 1.523 (5 seeds, one weak: 1.567) | 1.522 (10 seeds) | 1.522 (10 seeds) | 1.550 (5 seeds) |
+| 0.1B | **1.413** (3 seeds) | 1.427 (3 seeds) | 1.446 (3 seeds) | 1.457 (3 seeds) | 1.509 (3 seeds) |
+
+| Memory skill (chance 1.6%) | With the circuit | With it cut | Where |
+|---|---|---|---|
+| Relay through the board | 99.8 to 99.9% | at most 2.1% | 0.8M model, 3 seeds |
+| Relay through weight edits (`wa_key="hidden"`) | 99.7 to 100% | at most 2.1% | 0.8M model, 6 runs |
+| Lookup in a library of 1,024 unseen facts | 94% | 1.6% | 18M model trained mostly on text, 2 seeds |
+| Relay and lookup in one 0.1B model | 99.4 to 100% and 75 to 78% | 0.8% and 1.6% | 94.7M, 2 of 5 runs trained |
+
+These are short runs at equal steps. The hybrid takes about 1.2 times as long per step as Llama in 32-bit precision
+(1.6 times in bf16). The Qwen3.5-style model is our own small build, not the released weights. No memory circuit has
+lowered the loss on ordinary text yet.
+
+- **At 0.1B the hybrid leads every baseline on every seed** (1.413 against 1.446 for a gated Llama and 1.457 for a
+  Qwen3.5-style model). Leaving rotary attention out of the starting circuits removed the weak seeds; it is now the
+  default.
+- **Agents can teach each other by editing weights.** A weight-alter slot emits rank-1 changes to an MLP matrix of
+  another agent. With a learned key it passed 52% of the relay facts; with the key taken from the edited layer it
+  passes 99.7 to 100%. On ordinary text a self-editing slot costs 0.003 to 0.005 bits per byte.
+
+Earlier small-scale tests on a Mac Studio, all in [results/README.md](results/README.md):
 - **Agents learn to talk.** Facts held by one agent reach another only through the board: 99.8% correct with the board,
   1.5% (chance) without, 3 seeds. With 4 agents, one gathers facts from the other three.
 - **The model builds its own RAG.** On facts that change every step, it finds the right one among 1,024 it has never
@@ -222,6 +248,10 @@ Starting points. Almost everything here runs on a laptop or a free Google Colab 
 - [ ] Swarm sizes that vary within a run (2 to 8)
 - [x] A weight-alter circuit (`WA`, `exealm/model/alter.py`, opt-in): a slot that emits rank-1 changes to an MLP weight matrix of its own agent or of the other agents in its swarm, learned from the ordinary loss; the changes last for one pass ([docs/memory.md](docs/memory.md))
 - [ ] Weight changes that persist across passes (a store like the persistent board), and a safety review before any edit reaches stored parameters
+- [ ] How many facts can weight edits carry? The relay with 4, 8, 16, 32 and 64 facts, board against weight-alter (`experiments/swarm_relay.py --facts N --memory WA --wa_key hidden`; a 0.8M model, runs on a laptop CPU or Colab)
+- [ ] Weight-alter with 4 agents (three writers editing one reader) and with a later layer as the target (`wa_target`)
+- [ ] In the combined 0.1B model with `wa_key="hidden"` the relay went through weight edits alone and the board was unused (1 seed). Does that hold on more seeds, and does the board come back when the facts are longer than one chunk?
+- [ ] A relay built from real text (one agent reads a paragraph, another answers about it), to compare the board and weight-alter outside the toy task
 - [ ] Agent identity: a role or id signal on posts so agents can specialize
 - [ ] Retrieval division of labor: do agents in a swarm pull different chunks? Try rewarding it
 - [ ] Swarm-aware multi-GPU training, keeping each swarm on one GPU (testable on a CPU with two processes)
@@ -261,21 +291,27 @@ Starting points. Almost everything here runs on a laptop or a free Google Colab 
 - [ ] The full 17M model against a gated Llama on the same batches (the fair baseline now that ExeaLM is gated)
 - [ ] Gated DeltaNet as a TONN circuit type the search can choose ([#30](https://github.com/exea-labs/ExeaLM/issues/30)); other new types, for example sliding-window attention
 - [x] A circuit that has not been measured yet was scaled by the batch it was reading, so its output depended on later tokens and on other rows until its first training step. Fixed in [#47](https://github.com/exea-labs/ExeaLM/pull/47) (a constant scale until the first measurement). On real text at 13M the fix changes the score by 0.0001 bits per byte (3 seeds, [results/funding](results/funding/README.md))
-- [ ] Make the starting menu without rotary attention the default for the hybrid. It scored 1.511 over 10 seeds at 13M (Qwen3.5-style 1.522, gated Llama 1.522) and 1.413 over 3 seeds at 0.1B (original menu 1.427, gated Llama 1.446, Qwen3.5-style 1.457)
+- [x] The starting menu without rotary attention is the default for the hybrid (`HYBRID` in `exealm/config.py`; the search can still add the type). It scored 1.511 over 10 seeds at 13M (Qwen3.5-style 1.522, gated Llama 1.522) and 1.413 over 3 seeds at 0.1B (original menu 1.427, gated Llama 1.446, Qwen3.5-style 1.457)
+- [ ] (GPU) The same comparison at equal training time in bf16, where the hybrid is 1.6 times slower per step than Llama at 0.1B: does the 0.033 lead over the gated Llama survive?
+- [ ] (GPU) Longer runs: do the 0.1B leads hold at 10 times the tokens (about 500M)?
+- [ ] (GPU) Scale up: 0.5B, 1B and 3B with the same comparison, to see how the lead changes with size
+- [ ] Which other circuit types hurt or help in the starting menu? Leave one type out at a time at 13M, 3 seeds each (Colab-sized)
 - [x] Weight-alter passed about half of what the board passes on the relay (52% against 99.8%), because the model did not learn to tie values to keys. With the key taken from the edited layer (`wa_key="hidden"`) it passes 99.7 to 100% (6 runs)
 - [x] Weight-alter with `wa_key="hidden"` on real text and in the combined model: it costs 0.003 to 0.005 bits per byte at 13M (3 seeds); in the combined 0.1B model it carries the relay alone (100%, 1 seed)
-- [ ] The combined 0.1B recipe (text with relay and lookup batches) trained in 2 of 5 ExeaLM runs. Find out why the lookup fails to start in the others, and fix it
+- [ ] The combined 0.1B recipe (text with relay and lookup batches) trained in 2 of 5 ExeaLM runs. The logs only held one line per 1,000 steps, so the cause is unknown. `experiments/full_small.py` now prints the loss of each kind of batch and the gradient norm every 100 steps (`--log_every`) and can grow the lookup datastore only once the current size is learned (`--grow_when`). Both are untested on real data: **(GPU)** rerun the five settings with them and find where the failed runs leave the good ones
 - [ ] Shape sweep at fixed parameters: depth, width, slots per layer, channels per slot
 - [ ] Search schedule: how long to search, how much to replace, how long new circuits are protected (on the hybrid with a good start it adds about 0.001 today)
+- [ ] The search did not repair a weak start: on the weak seed at 13M it replaced one circuit in the whole run (1.565 against 1.567). Make it replace more when the worth scores say a type is useless, and test on seeds 4 and 6 of `results/funding`
 - [ ] Which circuit types survive the search, and does that change from `tiny` to `small`?
 - [x] (starter) Plot the architecture the search chose, layer by layer, over training: `experiments/plot_search.py` ([figure and results](results/README.md#11-what-the-search-chooses-experimentsplot_searchpy-resultssearch_arch), [#11](https://github.com/exea-labs/ExeaLM/issues/11))
-- [ ] (GPU) Confirm the winners at the full 0.1B size
+- [x] (GPU) Confirm the winners at the full 0.1B size: 3 seeds each at equal steps, hybrid 1.413 (1.427 with the original menu), gated Llama 1.446, Qwen3.5-style 1.457, Llama 1.509 ([results/funding](results/funding/README.md))
 
 ### Speed (`exealm/model/scan.py`)
 - [ ] Fused Triton kernels for `decay_scan` and `gated_scan` (any NVIDIA GPU works, including a free Colab T4; must also run on AMD MI300X) ([#16](https://github.com/exea-labs/ExeaLM/issues/16))
 - [ ] A compile-friendly TONN layer: one code path for every circuit type, so `torch.compile` can fuse it (today it gains 8% for the hybrid and 20% for Llama) ([#24](https://github.com/exea-labs/ExeaLM/issues/24))
 - [ ] One scan call for all running-sum circuits in a layer
 - [ ] Profile where the memory circuits' time goes: the 17M model with the board and library on is 1.30x Llama per step ([#29](https://github.com/exea-labs/ExeaLM/issues/29))
+- [ ] In bf16 on the MI300X the hybrid is 1.6 times slower per step than Llama at 0.1B and 0.5B (1.2 times in 32-bit). Find which circuits lose the most from bf16 and fix them ([throughput](results/funding/README.md))
 - [ ] Fast Gated DeltaNet on NVIDIA through flash-linear-attention ([#31](https://github.com/exea-labs/ExeaLM/issues/31))
 - [ ] Recurrent state cache, so generating a token doesn't re-read the whole context
 - [ ] `torch.compile` support
@@ -314,7 +350,8 @@ Starting points. Almost everything here runs on a laptop or a free Google Colab 
 ### Post-training (`exealm/train/`)
 - [x] SFT loop and data loader (`python -m exealm.train.sft --ckpt ... --data conversations.jsonl.gz`): one conversation per row, padded on the right and grouped by length, so conversations cannot see each other. Tested on `tiny`: it learns a toy question-answer task and answers through the chat demo
 - [ ] SFT data: download and format the sources (IFM/SFT-Reasoning, LLM-jp instruction data) into conversation files, with licenses
-- [ ] DPO loop
+- [x] DPO loop (`python -m exealm.train.dpo --ckpt ... --data prefs.jsonl.gz`): a frozen copy of the starting model is the reference; one row per answer, as in SFT. Tested on `tiny`: it learns to prefer the chosen answers
+- [ ] DPO data: preference pairs in English and Japanese, with licenses
 - [ ] GRPO loop with math and code rewards
 - [x] Chat template (`exealm/chat.py`: `chat_prompt` and the same format as a Jinja template, tested to give the same tokens)
 - [ ] Do long reasoning traces help a model this small? Test on an existing small open model such as SmolLM2-135M (Colab)
@@ -324,7 +361,7 @@ Starting points. Almost everything here runs on a laptop or a free Google Colab 
 - [ ] Japanese evals (llm-jp-eval)
 - [x] Retrieval eval: answers that are in the library but not in the prompt (`experiments/irl_eval.py`: re-mentioned rare words of held-out Wikipedia, bits, top-1 and four choices) ([#18](https://github.com/exea-labs/ExeaLM/issues/18))
 - [x] Run evals automatically on every checkpoint (`python -m exealm.eval.auto --run <run folder> --tasks hellaswag --watch 300`: scores each checkpoint once, beside training, into `evals.jsonl` and a table in `evals.md`)
-- [ ] Results table in this README
+- [x] Results table in this README (under [Results so far](#results-so-far))
 
 ### Release, docs and community
 - [x] Hugging Face model card and a loader, so the model loads with one line (`exealm.from_pretrained("17m/exealm_together_gated_seed0")`, `exealm/hub.py`)
@@ -372,7 +409,7 @@ tests/                   run with pytest
 1. [x] Skeleton: TONN model with RG and AG circuits, architecture search, training script, tests
 2. [ ] Data pipeline: download, dedupe, filter, and mix the 100B tokens
 3. [ ] Tokenizer
-4. [ ] Small-scale architecture experiments: TONN vs Llama from 10M to 100M parameters, with and without RG, AG and swarms
+4. [x] Small-scale architecture experiments: TONN vs Llama from 10M to 100M parameters (the hybrid leads at 13M and 0.1B; the ablations with and without RG, AG and swarms are still open)
 5. [ ] Fast kernels and multi-GPU training
 6. [ ] Evaluation harness (English and Japanese, retrieval, agents)
 7. [ ] Full training run

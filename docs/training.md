@@ -40,7 +40,7 @@ What's missing:
 1. **SFT** (`exealm/train/sft.py`): conversations in the chat format, loss on the assistant's tokens only. The loss,
    the loader and the loop are written (`python -m exealm.train.sft`). Every conversation gets its own row, padded on
    the right, and conversations of similar length share a batch. The data sources are not downloaded or formatted yet.
-2. **DPO** (`exealm/train/dpo.py`): preferred versus rejected answers. The loss is written; data and loop are not.
+2. **DPO** (`exealm/train/dpo.py`): preferred versus rejected answers. The loop is written (`python -m exealm.train.dpo`, tested on `tiny`); the preference data is not chosen yet.
 3. **GRPO** (`exealm/train/grpo.py`): RL with verifiable rewards (math answers, code tests, format). The loss and group
    advantages are written and tested; the sampling loop and rewards are not.
 4. **Swarm SFT and swarm RL:** swarms that share a board and solve tasks together ([swarms.md](swarms.md)). Not started,

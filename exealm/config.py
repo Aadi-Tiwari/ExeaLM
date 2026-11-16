@@ -85,7 +85,11 @@ class ModelConfig:
 # Its attention layers use two parts from Qwen3.5: gated attention and QK-norm. They improve the hybrid by 0.025 bits
 # per byte at 13M (2 seeds) and the full 17M model with both memory skills by 0.026 (1 seed), and with them the hybrid
 # leads a Qwen3.5-style model at 13M (results/README.md, sections 10 and 12).
-HYBRID = dict(init_weights={"C": 4.0, "G": 0.25, "D": 0.25}, attn_gate=True, qk_norm=True)
+# "RP": 0 keeps rotary attention out of the STARTING circuits: the attention layers of the hybrid already do that job.
+# With it in the menu, 2 of 10 seeds at 13M started weak (1.567 and 1.544 against about 1.51); without it none did,
+# and the 0.1B model improved from 1.427 to 1.413 (results/funding/README.md, sections 1 and 3). The search can
+# still add the type later.
+HYBRID = dict(init_weights={"C": 4.0, "G": 0.25, "D": 0.25, "RP": 0.0}, attn_gate=True, qk_norm=True)
 
 PRESETS = {
     "100m": ModelConfig(attn_layers=tuple(i for i in range(14) if i % 3), **HYBRID),        # TONN at 0, 3, 6, 9, 12

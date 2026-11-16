@@ -352,6 +352,10 @@ def main():
     ap.add_argument("--relay_chunk", type=int, default=0, help="relay: one fact per this many tokens (0: chunk)")
     ap.add_argument("--relay_facts", type=int, default=4, help="relay: facts per holder")
     ap.add_argument("--grow_every", type=int, default=150, help="lookup batches between doublings")
+    ap.add_argument("--grow_when", type=float, default=0.0, help="double the lookup datastore only once the mean lookup loss "
+                    "over the last --grow_every lookup batches is below this (0: double on the count alone)")
+    ap.add_argument("--log_every", type=int, default=100, help="print the mean training loss of each kind of batch and the "
+                    "gradient norm this often (0: off)")
     ap.add_argument("--d", type=int, default=320)
     ap.add_argument("--slots", type=int, default=10)
     ap.add_argument("--steps", type=int, default=24000)
@@ -447,6 +451,8 @@ def main():
     searcher = Searcher(every=a.search_every, until=a.search_until, seed=a.seed) if a.search and a.model == "exealm" else None
     searches = []
     counts = dict.fromkeys(KINDS, 0)
+    recent = {k: [] for k in KINDS}                       # training losses since the last log line, by kind of batch
+    norms, level, since = [], 0, []                       # level: how many times the lookup datastore has doubled
     last = min(a.steps, a.stop_at) if a.stop_at else a.steps
     for step in range(last):
         if searcher is not None and searcher.due(step, a.steps):
@@ -461,7 +467,9 @@ def main():
             g["lr"] = lr_at(step, a.steps, a.lr, a.warmup, 0.2)
         kind = KINDS[int(rng.choice(len(KINDS), p=next((q for u, q in phases if step < u), p)))]
         if kind == "lookup":
-            n_facts = min(a.facts, a.grow * 2 ** (counts["lookup"] // a.grow_every)) if a.grow else a.facts
+            if not a.grow_when:
+                level = counts["lookup"] // a.grow_every
+            n_facts = min(a.facts, a.grow * 2 ** level) if a.grow else a.facts
             x, y, ds = lookup(a.batch, a.chunk, n_facts, rng, data.vocab - 512, model if a.model == "exealm" else None, dev, a.dense)
             mem = mem_for(a.model, ds, torch.full(x.shape, -1), 1, dev)
         else:
@@ -480,8 +488,18 @@ def main():
         loss = model(x.to(dev), mem, y.to(dev))[1]
         opt.zero_grad(set_to_none=True)
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        norms.append(float(torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)))
         opt.step()
+        recent[kind].append(float(loss.detach()))
+        if kind == "lookup" and a.grow_when:              # the datastore grows only once this size has been learned
+            since.append(recent[kind][-1])
+            if len(since) >= a.grow_every and sum(since[-a.grow_every:]) / a.grow_every < a.grow_when:
+                level, since = level + 1, []
+        if a.log_every and (step + 1) % a.log_every == 0:
+            print(json.dumps(dict(log=step + 1, loss={k: round(sum(v) / len(v), 3) for k, v in recent.items() if v},
+                                  grad_norm=round(sum(norms) / len(norms), 2), grad_norm_max=round(max(norms), 2),
+                                  lookup_facts=min(a.facts, a.grow * 2 ** level) if a.grow else a.facts)), flush=True)
+            recent, norms = {k: [] for k in KINDS}, []
         if dev.type == "mps" and step % 200 == 0:
             torch.mps.empty_cache()
         if (step + 1) % a.eval_every == 0 or step + 1 == last:
