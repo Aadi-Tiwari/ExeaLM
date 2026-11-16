@@ -375,6 +375,7 @@ def main():
     ap.add_argument("--pool", default="mean", choices=["mean", "attn"], help="how a chunk becomes a board post or a retrieval key")
     ap.add_argument("--wa", type=int, default=0, help="weight-alter slots pinned per TONN layer (exealm/model/alter.py; 0: none)")
     ap.add_argument("--wa_scope", default="all", choices=["self", "others", "all"])
+    ap.add_argument("--wa_key", default="learned", choices=["learned", "hidden"], help="hidden: an edit's key is what the edited matrix receives")
     ap.add_argument("--tag", default="")
     ap.add_argument("--stop_at", type=int, default=0, help="stop after this step, keeping the --steps schedule (quick checks)")
     ap.add_argument("--seed", type=int, default=0)
@@ -402,7 +403,7 @@ def main():
     cfg = get_config(a.preset, vocab_size=data.vocab, chunk=a.chunk, rag_chunk_len=a.chunk, rag_key_dim=a.key_dim,
                      rag_lexical=a.lexical, chunk_pool=a.pool, board_chunk=a.board_chunk, seed=a.seed, **size,
                      rag_null=bool(a.rag_null), **qwen,
-                     **(dict(pinned={"RG": 1, "AG": 1, "WA": a.wa}, menu=MENU + ("WA",), wa_scope=a.wa_scope)
+                     **(dict(pinned={"RG": 1, "AG": 1, "WA": a.wa}, menu=MENU + ("WA",), wa_scope=a.wa_scope, wa_key=a.wa_key)
                         if a.wa and a.model == "exealm" else {}),
                      **({"enc_dim": 32, "n_layers": 3, "attn_layers": (1,)} if a.smoke else {}))
     specs = init.get("specs") if init else None
