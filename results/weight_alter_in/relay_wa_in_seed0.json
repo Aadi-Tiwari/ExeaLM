@@ -1,0 +1,209 @@
+{
+ "args": {
+  "arms": "swarm",
+  "steps": 3000,
+  "agents": 2,
+  "swarms": 32,
+  "facts": 4,
+  "fill": 64,
+  "chunk": 8,
+  "d": 128,
+  "layers": 4,
+  "slots": 8,
+  "h": 16,
+  "lr": 0.002,
+  "eval_every": 250,
+  "eval_batches": 16,
+  "seed": 0,
+  "board_chunk": 0,
+  "pool": "mean",
+  "memory": "WA",
+  "wa_slots": 1,
+  "wa_scope": "others",
+  "wa_matrix": "in",
+  "device": "auto",
+  "out": "results/weight_alter_in"
+ },
+ "device": "cuda",
+ "chance": {
+  "acc": 0.0156,
+  "bits": 6.0
+ },
+ "runs": [
+  {
+   "arm": "swarm",
+   "params": 865720,
+   "final": {
+    "arm": "swarm",
+    "step": 3000,
+    "secs": 2182.5,
+    "shared": {
+     "acc": 0.4951,
+     "bits": 1.868
+    },
+    "cut": {
+     "acc": 0.0186,
+     "bits": 8.237
+    }
+   },
+   "curve": [
+    {
+     "arm": "swarm",
+     "step": 250,
+     "secs": 194.3,
+     "shared": {
+      "acc": 0.2012,
+      "bits": 5.169
+     },
+     "cut": {
+      "acc": 0.0181,
+      "bits": 6.974
+     }
+    },
+    {
+     "arm": "swarm",
+     "step": 500,
+     "secs": 416.6,
+     "shared": {
+      "acc": 0.3047,
+      "bits": 4.241
+     },
+     "cut": {
+      "acc": 0.0151,
+      "bits": 8.667
+     }
+    },
+    {
+     "arm": "swarm",
+     "step": 750,
+     "secs": 695.3,
+     "shared": {
+      "acc": 0.3472,
+      "bits": 3.583
+     },
+     "cut": {
+      "acc": 0.0161,
+      "bits": 9.493
+     }
+    },
+    {
+     "arm": "swarm",
+     "step": 1000,
+     "secs": 1035.4,
+     "shared": {
+      "acc": 0.3955,
+      "bits": 2.899
+     },
+     "cut": {
+      "acc": 0.0122,
+      "bits": 9.504
+     }
+    },
+    {
+     "arm": "swarm",
+     "step": 1250,
+     "secs": 1166.8,
+     "shared": {
+      "acc": 0.4561,
+      "bits": 2.486
+     },
+     "cut": {
+      "acc": 0.0117,
+      "bits": 8.553
+     }
+    },
+    {
+     "arm": "swarm",
+     "step": 1500,
+     "secs": 1294.1,
+     "shared": {
+      "acc": 0.4722,
+      "bits": 2.209
+     },
+     "cut": {
+      "acc": 0.0156,
+      "bits": 8.738
+     }
+    },
+    {
+     "arm": "swarm",
+     "step": 1750,
+     "secs": 1458.0,
+     "shared": {
+      "acc": 0.4814,
+      "bits": 2.146
+     },
+     "cut": {
+      "acc": 0.0137,
+      "bits": 8.692
+     }
+    },
+    {
+     "arm": "swarm",
+     "step": 2000,
+     "secs": 1622.9,
+     "shared": {
+      "acc": 0.4839,
+      "bits": 2.032
+     },
+     "cut": {
+      "acc": 0.0142,
+      "bits": 8.788
+     }
+    },
+    {
+     "arm": "swarm",
+     "step": 2250,
+     "secs": 1800.3,
+     "shared": {
+      "acc": 0.4946,
+      "bits": 1.964
+     },
+     "cut": {
+      "acc": 0.0122,
+      "bits": 8.995
+     }
+    },
+    {
+     "arm": "swarm",
+     "step": 2500,
+     "secs": 2046.1,
+     "shared": {
+      "acc": 0.4873,
+      "bits": 1.89
+     },
+     "cut": {
+      "acc": 0.0161,
+      "bits": 8.452
+     }
+    },
+    {
+     "arm": "swarm",
+     "step": 2750,
+     "secs": 2121.7,
+     "shared": {
+      "acc": 0.4976,
+      "bits": 1.856
+     },
+     "cut": {
+      "acc": 0.0166,
+      "bits": 8.607
+     }
+    },
+    {
+     "arm": "swarm",
+     "step": 3000,
+     "secs": 2182.5,
+     "shared": {
+      "acc": 0.4951,
+      "bits": 1.868
+     },
+     "cut": {
+      "acc": 0.0186,
+      "bits": 8.237
+     }
+    }
+   ]
+  }
+ ]
+}

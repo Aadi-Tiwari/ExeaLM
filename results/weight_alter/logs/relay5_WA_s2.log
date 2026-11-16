@@ -1,0 +1,3 @@
+{"arm": "swarm", "step": 250, "secs": 195.2, "shared": {"acc": 0.2588, "bits": 3.809}, "cut": {"acc": 0.0137, "bits": 6.819}}
+{"arm": "swarm", "step": 500, "secs": 386.0, "shared": {"acc": 0.3853, "bits": 2.573}, "cut": {"acc": 0.0166, "bits": 6.967}}
+{"arm": "swarm", "step": 750, "secs": 564.7, "shared": {"acc": 0.4209, "bits": 2.407}, "cut": {"acc": 0.0132, "bits": 7.133}}

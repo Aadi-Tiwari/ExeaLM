@@ -199,3 +199,24 @@ Run `python -m experiments.faiss_datastore --keys 1000000 --queries 256 --thread
 for recall@4 and median search latency against the exact backend, with and without
 document exclusion. The script records index construction time and serialized size
 separately. Synthetic timings do not establish downstream language-model quality.
+
+## WA: a circuit that changes weights
+
+`exealm/model/alter.py`. A WA slot does not write to the residual stream. Once per chunk it emits a rank-1 change to
+a weight matrix, the output matrix of the gated MLP after its layer (or of a later layer, `wa_target`):
+
+    change  =  strength x (u v^T)        u: what to write        v: which inputs it applies to
+
+Both come from the slot's streams, averaged over the chunk, so the model learns what to write from the ordinary
+loss. The change takes effect from the next chunk on and lasts for the rest of the pass. `wa_scope` says whose copy
+of the matrix changes: `"self"`, `"others"` (the other agents of the swarm) or `"all"`. With `"others"`, an agent
+edits its teammates' weights and learns how from their errors. Each agent of a swarm then runs with its own
+version of that matrix.
+
+It is opt-in: `get_config(..., pinned={"WA": 1}, menu=MENU + ("WA",))`. The default presets and old checkpoints are
+unchanged. `experiments/swarm_relay.py --memory WA` runs the relay task with no board, so facts can only travel as
+weight changes.
+
+Limits. The changes live for one pass, like the in-batch board. They are fast weights (Schmidhuber 1992; Ba et al.
+2016) written by a learned rule. Nothing is written to the stored parameters, so nothing carries over between
+training steps or between conversations. Permanent self-editing is a different and riskier thing; it is not built.

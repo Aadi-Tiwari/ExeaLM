@@ -1,0 +1,13 @@
+{"arm": "swarm", "step": 250, "secs": 93.5, "shared": {"acc": 0.3926, "bits": 3.231}, "cut": {"acc": 0.0137, "bits": 7.844}}
+{"arm": "swarm", "step": 500, "secs": 182.8, "shared": {"acc": 0.5151, "bits": 2.189}, "cut": {"acc": 0.0161, "bits": 8.552}}
+{"arm": "swarm", "step": 750, "secs": 268.7, "shared": {"acc": 0.5312, "bits": 1.955}, "cut": {"acc": 0.0132, "bits": 8.932}}
+{"arm": "swarm", "step": 1000, "secs": 331.2, "shared": {"acc": 0.5444, "bits": 1.811}, "cut": {"acc": 0.0161, "bits": 8.959}}
+{"arm": "swarm", "step": 1250, "secs": 397.1, "shared": {"acc": 0.5522, "bits": 1.673}, "cut": {"acc": 0.0161, "bits": 9.242}}
+{"arm": "swarm", "step": 1500, "secs": 496.9, "shared": {"acc": 0.5234, "bits": 1.7}, "cut": {"acc": 0.0137, "bits": 8.982}}
+{"arm": "swarm", "step": 1750, "secs": 613.5, "shared": {"acc": 0.5186, "bits": 1.666}, "cut": {"acc": 0.0093, "bits": 8.947}}
+{"arm": "swarm", "step": 2000, "secs": 725.3, "shared": {"acc": 0.5249, "bits": 1.585}, "cut": {"acc": 0.0122, "bits": 9.1}}
+{"arm": "swarm", "step": 2250, "secs": 877.9, "shared": {"acc": 0.5366, "bits": 1.528}, "cut": {"acc": 0.0151, "bits": 8.892}}
+{"arm": "swarm", "step": 2500, "secs": 1036.2, "shared": {"acc": 0.5405, "bits": 1.496}, "cut": {"acc": 0.0127, "bits": 8.926}}
+{"arm": "swarm", "step": 2750, "secs": 1169.7, "shared": {"acc": 0.5391, "bits": 1.484}, "cut": {"acc": 0.0127, "bits": 8.934}}
+{"arm": "swarm", "step": 3000, "secs": 1369.7, "shared": {"acc": 0.5391, "bits": 1.481}, "cut": {"acc": 0.0151, "bits": 8.931}}
+WROTE results/weight_alter/relay_wa_seed1.json

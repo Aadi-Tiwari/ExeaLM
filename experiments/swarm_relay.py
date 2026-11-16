@@ -30,6 +30,7 @@ import torch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from exealm import ExeaLM, MemoryContext, count_params, get_config  # noqa: E402
+from exealm.config import MENU  # noqa: E402
 from exealm.train.pretrain import pick_device  # noqa: E402
 
 N_FILL, KEY0, VAL0, N_KEYS = 64, 64, 128, 64
@@ -80,8 +81,14 @@ def score(model, batches, swarm_size, dev):
 
 def run(arm, a, dev):
     torch.manual_seed(a.seed)
+    extra = {}
+    if a.memory == "WA":           # no board: facts can only travel as changes to the asker's weights (exealm/model/alter.py)
+        extra = dict(pinned={"WA": a.wa_slots}, menu=tuple(t for t in MENU if t not in ("RG", "AG")) + ("WA",),
+                     wa_scope=a.wa_scope, wa_matrix=a.wa_matrix)
+    elif a.memory == "none":       # neither: the control for both
+        extra = dict(pinned={}, menu=tuple(t for t in MENU if t not in ("RG", "AG")))
     cfg = get_config("tiny", vocab_size=256, chunk_pool=a.pool, board_chunk=a.board_chunk, d=a.d, n_layers=a.layers, slots=a.slots, h=a.h, chunk=a.chunk,
-                     swarm_size=a.agents, seed=a.seed)
+                     swarm_size=a.agents, seed=a.seed, **extra)
     model = ExeaLM(cfg).to(dev)
     opt = torch.optim.AdamW(model.parameters(), lr=a.lr, betas=(0.9, 0.95), weight_decay=0.0)
     rng = np.random.default_rng(a.seed)
@@ -126,6 +133,11 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--board_chunk", type=int, default=0, help="AG posts every this many tokens (0: every chunk)")
     ap.add_argument("--pool", default="mean", choices=["mean", "attn"], help="how a chunk becomes a post or a key")
+    ap.add_argument("--memory", default="AG", choices=["AG", "WA", "none"],
+                    help="how facts can travel: the agent board (AG), weight changes (WA, no board), or neither")
+    ap.add_argument("--wa_slots", type=int, default=1, help="weight-alter slots per layer (with --memory WA)")
+    ap.add_argument("--wa_scope", default="others", choices=["self", "others", "all"])
+    ap.add_argument("--wa_matrix", default="out", choices=["out", "in"])
     ap.add_argument("--device", default="auto")
     ap.add_argument("--out", default="results/swarm_relay")
     a = ap.parse_args()
@@ -134,6 +146,9 @@ def main():
     out = dict(args=vars(a), device=str(dev), chance=dict(acc=round(1 / N_KEYS, 4), bits=round(math.log2(N_KEYS), 3)),
                runs=[run(arm, a, dev) for arm in a.arms.split(",")])
     tag = "" if (a.agents, a.facts) == (2, 4) else f"_a{a.agents}_f{a.facts}"
+    if a.memory != "AG":
+        tag += f"_{a.memory.lower()}" + (f"{a.wa_slots}" if a.memory == "WA" and a.wa_slots != 1 else "")
+        tag += "_in" if a.memory == "WA" and a.wa_matrix == "in" else ""
     path = os.path.join(a.out, f"relay{tag}_seed{a.seed}.json")
     json.dump(out, open(path, "w"), indent=1)
     print("WROTE", path)

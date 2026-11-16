@@ -1068,3 +1068,14 @@ For scale: the end of the first half in the context gains +0.98 to +1.05 (first 
 - One seed, one starting checkpoint and 256 articles. All of it is small next to the baselines: the best built-in
   path gains 0.039 bits, BM25 RAG 0.32 to 0.36 and the right text in the context about 1 bit.
 
+## 14. Same-size comparisons on an MI300X, the weight-alter circuit and a combined 0.1B model (`results/funding/`)
+
+The full tables are in [results/funding/README.md](funding/README.md). In short, at equal steps (3,000) and in bits
+per byte:
+
+- 13M, 5 seeds: ExeaLM hybrid 1.523 (median 1.511), Qwen3.5-style 1.522, gated Llama 1.523, Llama 1.550. One ExeaLM
+  seed drew poor starting circuits (1.567).
+- About 0.1B: ExeaLM hybrid 1.427 (3 seeds), gated Llama 1.446 (2 seeds), Qwen3.5-style 1.461 (1 seed), Llama 1.509
+  (3 seeds).
+- Relay task: the board passes 99.8 to 99.9% of the answers, weight-alter 51 to 54%, chance is 1.6%.
+- One 94.7M model with the board, the library and weight-alter: relay 99.4%, lookup 77.6% (1 seed).

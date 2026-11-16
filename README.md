@@ -220,6 +220,8 @@ Starting points. Almost everything here runs on a laptop or a free Google Colab 
 - [ ] Related swarms: group documents that are near each other in the model's own retrieval space
 - [ ] Cross-lingual swarms: pair Japanese and English Wikipedia articles on the same topic (interlanguage links) ([#23](https://github.com/exea-labs/ExeaLM/issues/23))
 - [ ] Swarm sizes that vary within a run (2 to 8)
+- [x] A weight-alter circuit (`WA`, `exealm/model/alter.py`, opt-in): a slot that emits rank-1 changes to an MLP weight matrix of its own agent or of the other agents in its swarm, learned from the ordinary loss; the changes last for one pass ([docs/memory.md](docs/memory.md))
+- [ ] Weight changes that persist across passes (a store like the persistent board), and a safety review before any edit reaches stored parameters
 - [ ] Agent identity: a role or id signal on posts so agents can specialize
 - [ ] Retrieval division of labor: do agents in a swarm pull different chunks? Try rewarding it
 - [ ] Swarm-aware multi-GPU training, keeping each swarm on one GPU (testable on a CPU with two processes)
@@ -258,7 +260,9 @@ Starting points. Almost everything here runs on a laptop or a free Google Colab 
 - [x] Make gated attention + QK-norm the default: it holds on two seeds (1.511, 1.512), beats a gated Llama and a Qwen3.5-style model at equal steps and at equal compute (1.509 against 1.515 and 1.542), and improves the full 17M model with both skills (1.393 against 1.419) ([results §10, §12](results/README.md#12-parts-from-qwen35-exealmmodeldeltapy-experimentstokenizer_lmpy---llama_cfg))
 - [ ] The full 17M model against a gated Llama on the same batches (the fair baseline now that ExeaLM is gated)
 - [ ] Gated DeltaNet as a TONN circuit type the search can choose ([#30](https://github.com/exea-labs/ExeaLM/issues/30)); other new types, for example sliding-window attention
-- [ ] A circuit that has not been measured yet is scaled by the batch it is reading, so its output depends on later tokens and on other rows until its first training step. Draft fix in [#47](https://github.com/exea-labs/ExeaLM/pull/47): it needs a longer real-text comparison before it goes in
+- [x] A circuit that has not been measured yet was scaled by the batch it was reading, so its output depended on later tokens and on other rows until its first training step. Fixed in [#47](https://github.com/exea-labs/ExeaLM/pull/47) (a constant scale until the first measurement). On real text at 13M the fix changes the score by 0.0001 bits per byte (3 seeds, [results/funding](results/funding/README.md))
+- [ ] The 13M hybrid without rotary attention in the starting menu scored 1.503 to 1.515 on 5 seeds, ahead of every Qwen3.5-style and gated-Llama run. The menu was chosen after seeing a weak seed. Confirm it on new seeds before it becomes the default
+- [ ] Weight-alter passes about half of what the board passes on the relay (52% against 99.8%). Find out why it stops there
 - [ ] Shape sweep at fixed parameters: depth, width, slots per layer, channels per slot
 - [ ] Search schedule: how long to search, how much to replace, how long new circuits are protected (on the hybrid with a good start it adds about 0.001 today)
 - [ ] Which circuit types survive the search, and does that change from `tiny` to `small`?

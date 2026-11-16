@@ -39,6 +39,7 @@ HERE = os.path.dirname(__file__)
 sys.path.insert(0, os.path.join(HERE, ".."))
 sys.path.insert(0, HERE)
 from exealm import Datastore, ExeaLM, MemoryContext, count_params, get_config  # noqa: E402
+from exealm.config import MENU  # noqa: E402
 from exealm.memory.lexical import LexicalDatastore  # noqa: E402
 from exealm.data.loader import MultiShards, SyntheticShards, TokenShards  # noqa: E402
 from exealm.model.baseline import Llama  # noqa: E402
@@ -182,6 +183,22 @@ def selection(model, a, data, dev):
     return out
 
 
+class slots_off:
+    """Switch every slot of one circuit type off for the duration (as the search's worth measurement does)."""
+
+    def __init__(self, model, kind):
+        self.model, self.kind = model, kind
+
+    def __enter__(self):
+        self.saved = [lay.mask.clone() for lay in self.model.layers]
+        for lay in self.model.layers:
+            lay.mask[[k for k, s in enumerate(lay.specs) if s["tmpl"] == self.kind]] = 0
+
+    def __exit__(self, *exc):
+        for lay, m in zip(self.model.layers, self.saved):
+            lay.mask.copy_(m)
+
+
 @torch.no_grad()
 def evaluate(model, a, data, dev, mk):
     model.eval()
@@ -223,6 +240,18 @@ def evaluate(model, a, data, dev, mk):
             hits[k] += int((logits[m.to(dev)].argmax(-1).cpu() == y[m]).sum())
         n += int(m.sum())
     out["relay"] = {k: round(v / n, 4) for k, v in hits.items()}
+    if mk == "exealm" and any(s["tmpl"] == "WA" for lay in model.layers for s in lay.specs):
+        # which path carries the facts: the board alone (weight-alter slots off) and weight changes alone (board off)
+        for name, off in (("board_only", "WA"), ("weight_alter_only", "AG")):
+            with slots_off(model, off):
+                rrng, hit, n = np.random.default_rng(30_000), 0, 0
+                for _ in range(max(2, a.eval_batches // 2)):
+                    x, y = relay(a.batch, a.relay_chunk or a.chunk, rrng, data.vocab - 256, a.relay_facts, a.batch * a.seq)
+                    m = y >= 0
+                    logits = model(x.to(dev), mem_for(mk, None, None, 2, dev))[0].float()
+                    hit += int((logits[m.to(dev)].argmax(-1).cpu() == y[m]).sum())
+                    n += int(m.sum())
+            out["relay"][name] = round(hit / n, 4)
     # lookup: 1,024 facts the model has never seen, datastore attached vs removed
     lrng = np.random.default_rng(40_000)
     hits = {"attached": 0, "removed": 0} if mk == "exealm" else {"removed": 0}
@@ -344,6 +373,8 @@ def main():
     ap.add_argument("--lib_on", default="all", choices=["all", "wiki"], help="training batches that get the library")
     ap.add_argument("--board_chunk", type=int, default=0, help="AG posts every this many tokens (0: every chunk)")
     ap.add_argument("--pool", default="mean", choices=["mean", "attn"], help="how a chunk becomes a board post or a retrieval key")
+    ap.add_argument("--wa", type=int, default=0, help="weight-alter slots pinned per TONN layer (exealm/model/alter.py; 0: none)")
+    ap.add_argument("--wa_scope", default="all", choices=["self", "others", "all"])
     ap.add_argument("--tag", default="")
     ap.add_argument("--stop_at", type=int, default=0, help="stop after this step, keeping the --steps schedule (quick checks)")
     ap.add_argument("--seed", type=int, default=0)
@@ -355,7 +386,10 @@ def main():
         a.steps, a.batch, a.seq, a.chunk, a.min_tokens, a.d, a.slots = 12, 8, 64, 8, 64, 64, 2
         a.eval_every, a.eval_batches, a.refresh_every, a.save_every, a.gen_tokens, a.key_dim, a.lexical = 6, 2, 5, 0, 4, 32, 32
         a.facts, a.grow_every = 64, 2
-        a.device, a.out = "cpu", "runs/full_small_smoke"
+        a.device = "cpu"
+        a.out = a.out if a.out != "results/full_small" else "runs/full_small_smoke"
+        if a.wa:                                    # room for the three pinned circuits
+            a.d, a.slots = 128, 4
     dev = pick_device(a.device)
     torch.manual_seed(a.seed)
     data = Data(a)
@@ -368,6 +402,8 @@ def main():
     cfg = get_config(a.preset, vocab_size=data.vocab, chunk=a.chunk, rag_chunk_len=a.chunk, rag_key_dim=a.key_dim,
                      rag_lexical=a.lexical, chunk_pool=a.pool, board_chunk=a.board_chunk, seed=a.seed, **size,
                      rag_null=bool(a.rag_null), **qwen,
+                     **(dict(pinned={"RG": 1, "AG": 1, "WA": a.wa}, menu=MENU + ("WA",), wa_scope=a.wa_scope)
+                        if a.wa and a.model == "exealm" else {}),
                      **({"enc_dim": 32, "n_layers": 3, "attn_layers": (1,)} if a.smoke else {}))
     specs = init.get("specs") if init else None
     if specs and a.memory_slots:

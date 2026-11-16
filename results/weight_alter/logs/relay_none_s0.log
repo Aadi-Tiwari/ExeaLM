@@ -1,0 +1,15 @@
+{"arm": "swarm", "step": 250, "secs": 25.2, "shared": {"acc": 0.0166, "bits": 6.045}, "cut": {"acc": 0.0166, "bits": 6.045}}
+{"arm": "swarm", "step": 500, "secs": 38.1, "shared": {"acc": 0.0161, "bits": 6.017}, "cut": {"acc": 0.0161, "bits": 6.017}}
+{"arm": "swarm", "step": 750, "secs": 50.8, "shared": {"acc": 0.0122, "bits": 6.019}, "cut": {"acc": 0.0122, "bits": 6.019}}
+{"arm": "swarm", "step": 1000, "secs": 63.5, "shared": {"acc": 0.0176, "bits": 6.009}, "cut": {"acc": 0.0176, "bits": 6.009}}
+{"arm": "swarm", "step": 1250, "secs": 76.2, "shared": {"acc": 0.0122, "bits": 6.006}, "cut": {"acc": 0.0122, "bits": 6.006}}
+{"arm": "swarm", "step": 1500, "secs": 89.0, "shared": {"acc": 0.0103, "bits": 6.001}, "cut": {"acc": 0.0103, "bits": 6.001}}
+{"arm": "swarm", "step": 1750, "secs": 101.8, "shared": {"acc": 0.0181, "bits": 6.002}, "cut": {"acc": 0.0181, "bits": 6.002}}
+{"arm": "swarm", "step": 2000, "secs": 114.6, "shared": {"acc": 0.0137, "bits": 6.001}, "cut": {"acc": 0.0137, "bits": 6.001}}
+{"arm": "swarm", "step": 2250, "secs": 127.3, "shared": {"acc": 0.0127, "bits": 6.003}, "cut": {"acc": 0.0127, "bits": 6.003}}
+{"arm": "swarm", "step": 2500, "secs": 162.5, "shared": {"acc": 0.0161, "bits": 6.002}, "cut": {"acc": 0.0161, "bits": 6.002}}
+{"arm": "swarm", "step": 2750, "secs": 213.2, "shared": {"acc": 0.0166, "bits": 6.0}, "cut": {"acc": 0.0166, "bits": 6.0}}
+{"arm": "swarm", "step": 3000, "secs": 240.4, "shared": {"acc": 0.022, "bits": 6.0}, "cut": {"acc": 0.022, "bits": 6.0}}
+{"arm": "solo", "step": 250, "secs": 53.1, "shared": {"acc": 0.0166, "bits": 6.045}, "cut": {"acc": 0.0166, "bits": 6.045}}
+{"arm": "solo", "step": 500, "secs": 107.4, "shared": {"acc": 0.0161, "bits": 6.017}, "cut": {"acc": 0.0161, "bits": 6.017}}
+{"arm": "solo", "step": 750, "secs": 174.1, "shared": {"acc": 0.0122, "bits": 6.019}, "cut": {"acc": 0.0122, "bits": 6.019}}

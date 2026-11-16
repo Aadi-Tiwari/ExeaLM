@@ -1,0 +1,90 @@
+[
+ {
+  "size": "0.1B",
+  "model": "hybrid",
+  "params_M": 93.4,
+  "precision": "bf16",
+  "batch": 32,
+  "seq": 512,
+  "s_per_step": 0.1633,
+  "tokens_per_s": 100310,
+  "effective_TFLOPs": 56.2
+ },
+ {
+  "size": "0.1B",
+  "model": "hybrid",
+  "params_M": 93.4,
+  "precision": "fp32",
+  "batch": 32,
+  "seq": 512,
+  "s_per_step": 0.3061,
+  "tokens_per_s": 53525,
+  "effective_TFLOPs": 30.0
+ },
+ {
+  "size": "0.1B",
+  "model": "llama",
+  "params_M": 89.7,
+  "precision": "bf16",
+  "batch": 32,
+  "seq": 512,
+  "s_per_step": 0.1037,
+  "tokens_per_s": 157982,
+  "effective_TFLOPs": 85.1
+ },
+ {
+  "size": "0.1B",
+  "model": "llama",
+  "params_M": 89.7,
+  "precision": "fp32",
+  "batch": 32,
+  "seq": 512,
+  "s_per_step": 0.2576,
+  "tokens_per_s": 63614,
+  "effective_TFLOPs": 34.2
+ },
+ {
+  "size": "0.5B",
+  "model": "hybrid",
+  "params_M": 497.1,
+  "precision": "bf16",
+  "batch": 16,
+  "seq": 512,
+  "s_per_step": 0.3016,
+  "tokens_per_s": 27158,
+  "effective_TFLOPs": 81.0
+ },
+ {
+  "size": "0.5B",
+  "model": "hybrid",
+  "params_M": 497.1,
+  "precision": "fp32",
+  "batch": 16,
+  "seq": 512,
+  "s_per_step": 0.6403,
+  "tokens_per_s": 12794,
+  "effective_TFLOPs": 38.2
+ },
+ {
+  "size": "0.5B",
+  "model": "llama",
+  "params_M": 474.1,
+  "precision": "bf16",
+  "batch": 16,
+  "seq": 512,
+  "s_per_step": 0.1867,
+  "tokens_per_s": 43883,
+  "effective_TFLOPs": 124.8
+ },
+ {
+  "size": "0.5B",
+  "model": "llama",
+  "params_M": 474.1,
+  "precision": "fp32",
+  "batch": 16,
+  "seq": 512,
+  "s_per_step": 0.5364,
+  "tokens_per_s": 15273,
+  "effective_TFLOPs": 43.4
+ }
+]
