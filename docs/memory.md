@@ -217,6 +217,13 @@ It is opt-in: `get_config(..., pinned={"WA": 1}, menu=MENU + ("WA",))`. The defa
 unchanged. `experiments/swarm_relay.py --memory WA` runs the relay task with no board, so facts can only travel as
 weight changes.
 
+Where the key comes from matters. With `wa_key="learned"` (the default) v is a learned map of the slot's stream. On
+the relay that passes about 52% of the facts: the values arrive, but the model does not learn to tie each to its
+question. With `wa_key="hidden"` v is what the edited matrix itself receives at the fact in the writer's copy of the
+layer (the MLP's hidden activation, or its normed input with `wa_matrix="in"`). A reader that meets the same token
+produces nearly the same activation, so the key matches without being learned, as in ROME (Meng et al. 2022). On
+the relay that passes 99.7 to 100% (6 runs, `results/funding/README.md` section 4). It has not been tried on text.
+
 Limits. The changes live for one pass, like the in-batch board. They are fast weights (Schmidhuber 1992; Ba et al.
 2016) written by a learned rule. Nothing is written to the stored parameters, so nothing carries over between
 training steps or between conversations. Permanent self-editing is a different and riskier thing; it is not built.

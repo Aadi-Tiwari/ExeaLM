@@ -48,6 +48,13 @@ class WeightAlter(nn.Module):
         if cfg.wa_matrix not in ("out", "in"):
             raise ValueError("wa_matrix must be 'out' or 'in'")
         self.matrix = cfg.wa_matrix
+        if cfg.wa_key not in ("learned", "hidden"):
+            raise ValueError("wa_key must be 'learned' or 'hidden'")
+        # "learned": the key v is a learned linear map of the slot's stream. "hidden": the key is what the target
+        # matrix itself receives at the picked positions of the writer's chunk (the MLP's hidden activation for
+        # "out", its normed input for "in"), so a reader that meets the same token produces the same key without
+        # having to learn the match (the key used by ROME, Meng et al. 2022)
+        self.key = cfg.wa_key
         # "out": the MLP's output matrix W_o (hidden f -> stream d). "in": its input matrix W_i (stream d -> 2f), so
         # the change passes through the MLP's gate: a key that matches twice as well opens it more than twice as far
         rows, cols = (cfg.d, cfg.ffn_width) if self.matrix == "out" else (2 * cfg.ffn_width, cfg.d)
@@ -74,21 +81,27 @@ class WeightAlter(nn.Module):
         pool = lambda x: chunks(x).mean(2)                                                        # (B, n, g, h)
         pad = (torch.arange(n * C, device=A.device) >= T).view(1, n, C, 1)
 
-        def picked(x, w):                                  # a learned weighting of the chunk's positions
-            a = (chunks(G) @ w.float()).masked_fill(pad, float("-inf")).softmax(2).unsqueeze(-1)
-            return (a * chunks(x)).sum(2)
+        def weights(w):                                    # a learned weighting of the chunk's positions (B, n, C, g)
+            return (chunks(G) @ w.float()).masked_fill(pad, float("-inf")).softmax(2)
+
+        def picked(x, w):
+            return (weights(w).unsqueeze(-1) * chunks(x)).sum(2)
         on = layer.mask[torch.as_tensor(slots, device=A.device)].float()                         # 0: switched off
         strength = self.log_gain.exp() * torch.sigmoid(pool(G) @ self.gate_w.float() + self.gate_b.float()) * on
         u = self.to_u(picked(A, self.pick_u)) * strength.unsqueeze(-1)    # (B, n, g, d)
         v = F.normalize(self.to_v(picked(K, self.pick_v)), dim=-1)        # (B, n, g, f)
         raw = (u, v)
-        u, v = exact_writes(u, v)
+        extra = {}
+        if self.key == "hidden":                          # the key is filled in by the target MLP (apply_edits)
+            extra = dict(key="hidden", pick=weights(self.pick_v))
+        else:
+            u, v = exact_writes(u, v)
         here = mem.cache["layer"]
         target = here if self.target < 0 else self.target
         if target < here:
             raise ValueError(f"wa_target {target} is before the emitting layer {here}")
         mem.cache.setdefault("wa", {}).setdefault(target, []).append(
-            dict(u=u, v=v, raw_u=raw[0], raw_v=raw[1], matrix=self.matrix, chunk=C, swarm=sw, scope=self.scope, complete=T // C))
+            dict(u=u, v=v, raw_u=raw[0], raw_v=raw[1], matrix=self.matrix, chunk=C, swarm=sw, scope=self.scope, complete=T // C, **extra))
         return A.new_zeros(B, T, g, h)
 
 
@@ -138,6 +151,14 @@ def apply_edits(hidden, edits):
     for e in edits:
         sw = e["swarm"]
         ns = B // sw
+        if e.get("key") == "hidden" and "done" not in e:   # keys from what this matrix receives in the writer's chunk
+            a = e["pick"]                                                  # (B, n, C, g)
+            n, C = a.shape[1], a.shape[2]
+            hc = F.pad(hidden.float(), (0, 0, 0, n * C - T)).view(B, n, C, f)
+            v = F.normalize(torch.einsum("bncg,bncf->bngf", a, hc), dim=-1)
+            e["raw_v"] = v
+            e["u"], e["v"] = exact_writes(e["raw_u"], v)
+            e["done"] = True
         u = e["u"].reshape(ns, -1, e["u"].shape[-1])                      # (ns, E, d)
         v = e["v"].reshape(ns, -1, f)                                     # (ns, E, f)
         coef = torch.einsum("astf,aef->aste", hidden.float().view(ns, sw, T, f), v)

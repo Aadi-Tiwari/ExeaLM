@@ -1075,7 +1075,8 @@ per byte:
 
 - 13M, 5 seeds: ExeaLM hybrid 1.523 (median 1.511), Qwen3.5-style 1.522, gated Llama 1.523, Llama 1.550. One ExeaLM
   seed drew poor starting circuits (1.567).
-- About 0.1B: ExeaLM hybrid 1.427 (3 seeds), gated Llama 1.446 (2 seeds), Qwen3.5-style 1.461 (1 seed), Llama 1.509
+- About 0.1B: ExeaLM hybrid 1.427 (3 seeds), gated Llama 1.446 (2 seeds), Qwen3.5-style 1.457 (3 seeds), Llama 1.509
   (3 seeds).
-- Relay task: the board passes 99.8 to 99.9% of the answers, weight-alter 51 to 54%, chance is 1.6%.
+- Relay task: the board passes 99.8 to 99.9% of the answers. Weight-alter passes 51 to 54% with a learned key and
+  99.7 to 100% with the key taken from the edited layer. Chance is 1.6%.
 - One 94.7M model with the board, the library and weight-alter: relay 99.4%, lookup 77.6% (1 seed).

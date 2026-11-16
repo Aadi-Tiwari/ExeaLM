@@ -7,10 +7,10 @@ from exealm.config import MENU
 from exealm.model.alter import apply_edits, exact_writes, weight_delta
 
 
-def model(scope="all", swarm=2, target=-1, seed=0):
+def model(scope="all", swarm=2, target=-1, seed=0, **more):
     torch.manual_seed(seed)
     cfg = get_config("tiny", pinned={"WA": 1}, menu=tuple(t for t in MENU if t not in ("RG", "AG")) + ("WA",),
-                     wa_scope=scope, wa_target=target, swarm_size=swarm)
+                     wa_scope=scope, wa_target=target, swarm_size=swarm, **more)
     m = ExeaLM(cfg)
     with torch.no_grad():
         for lay in m.layers:
@@ -131,3 +131,25 @@ def test_every_stored_key_returns_its_own_value_after_later_writes():
     same = torch.cat([v[:, :1], v[:, :1]], 1)                                      # a repeated key stays bounded
     cu2, _ = exact_writes(u[:, :2], same)
     assert torch.isfinite(cu2).all() and float(cu2.abs().max()) < 1e3
+
+
+@pytest.mark.parametrize("matrix", ["out", "in"])
+def test_a_key_taken_from_the_target_layer_stays_causal_and_reaches_the_other_agent(matrix):
+    """wa_key="hidden": the key is what the target matrix receives in the writer's chunk."""
+    m = model(scope="all", swarm=1, wa_key="hidden", wa_matrix=matrix)
+    x = torch.randint(0, 256, (2, 32))
+    y = x.clone()
+    y[:, 20] = (y[:, 20] + 1) % 256
+    with torch.no_grad():
+        a, b = m(x)[0], m(y)[0]
+    assert torch.allclose(a[:, :20], b[:, :20], atol=1e-6)                 # nothing before the changed token moves
+    assert not torch.allclose(a[:, 24:], b[:, 24:], atol=1e-6)             # later chunks do
+    m = model(scope="others", swarm=2, wa_key="hidden", wa_matrix=matrix)
+    y = x.clone()
+    y[0, 3] = (y[0, 3] + 1) % 256                                          # agent 0, chunk 0
+    with torch.no_grad():
+        a, b = m(x, MemoryContext(swarm_size=2))[0], m(y, MemoryContext(swarm_size=2))[0]
+    assert torch.allclose(a[1, :8], b[1, :8], atol=1e-6)                   # agent 1's first chunk is untouched
+    assert not torch.allclose(a[1, 8:], b[1, 8:], atol=1e-6)               # its later chunks run with changed weights
+    with pytest.raises(ValueError, match="wa_key"):
+        ExeaLM(get_config("tiny", pinned={"WA": 1}, wa_key="other"))

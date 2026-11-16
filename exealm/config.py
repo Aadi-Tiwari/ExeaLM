@@ -57,6 +57,7 @@ class ModelConfig:
     board_chunk: int = 0             # AG posts once per this many tokens (0: every `chunk`, like RG)
     wa_target: int = -1              # WA (weight alter): the layer whose MLP it changes (-1: the one after its own layer)
     wa_matrix: str = "out"           # which matrix of the target MLP a WA slot changes: its output ("out") or input ("in")
+    wa_key: str = "learned"      # "hidden": the key is the target MLP's own activation in the writer's chunk
     wa_scope: str = "all"            # whose weights a WA slot changes: "self", "others" (of its swarm) or "all"
     chunk_pool: str = "mean"         # how a chunk becomes one board post or one retrieval key: "mean" of its positions,
                                      # or "attn", a learned softmax over them that starts as the mean

@@ -55,8 +55,9 @@ def paired(runs, size, a, others):
 
 
 def relay_rows():
-    rows = [("Board", "seed 0 (from its log)", 0.999, 0.021), ("Weight-alter", "seed 0 (from its log)", 0.5107, 0.0166)]
-    for folder, label in (("weight_alter", ""), ("weight_alter_in", ", edits to the MLP's input matrix")):
+    rows = [("Board", "seed 0 (from its log)", 0.999, 0.021, ""), ("Weight-alter", "seed 0 (from its log)", 0.5107, 0.0166, "")]
+    for folder, label in (("weight_alter", ""), ("weight_alter_in", ", edits to the MLP's input matrix"), ("weight_alter_diag", ", rerun scored by question"),
+                          ("weight_alter_hkey", ", key from the edited layer")):
         for f in sorted(glob.glob(os.path.join(R, folder, "relay*.json"))):
             d = json.load(open(f))
             a = d["args"]
@@ -64,9 +65,14 @@ def relay_rows():
                 if r["arm"] != "swarm":
                     continue
                 name = "Board" if a["memory"] == "AG" else f"Weight-alter{label}" + (f", {a['wa_slots']} slots per layer" if a.get("wa_slots", 1) != 1 else "")
-                rows.append((name, f"seed {a['seed']}", r["final"]["shared"]["acc"], r["final"]["cut"]["acc"]))
-    out = ["| Path | Run | Facts passed | With the path cut |", "|---|---|---|---|"]
-    return "\n".join(out + [f"| {n} | {s} | {100 * x:.1f}% | {100 * c:.1f}% |" for n, s, x, c in sorted(rows)])
+                if folder == "weight_alter_hkey" and a.get("wa_matrix") == "in":
+                    name += ", edits to the MLP's input matrix"
+                if a.get("facts", 4) != 4:
+                    name += f", {a['facts']} facts"
+                by = ", ".join(f"{100 * x:.0f}%" for x in r["final"]["shared"].get("by_question", []))
+                rows.append((name, f"seed {a['seed']}", r["final"]["shared"]["acc"], r["final"]["cut"]["acc"], by))
+    out = ["| Path | Run | Facts passed | With the path cut | By question, in the order asked |", "|---|---|---|---|---|"]
+    return "\n".join(out + [f"| {n} | {s} | {100 * x:.1f}% | {100 * c:.1f}% | {b} |" for n, s, x, c, b in sorted(rows)])
 
 
 def combined():

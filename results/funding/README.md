@@ -12,24 +12,24 @@ own build of that layout (Gated DeltaNet and gated attention layers, about 3 to 
 the released Qwen3.5 weights. Runs shared the GPU, so their wall-clock seconds are not comparable; speed is in
 section 6. Commands: `experiments/tokenizer_lm.py` (the `args` field of each file holds the exact arguments).
 
-## 1. 13M parameters, five seeds
+## 1. 13M parameters, five seeds (0 to 4), then five more (5 to 9) for some rows
 
 | Model | Parameters | Seeds | English | Japanese wiki | Japanese web | Code | Mean | Median | Min to max | Per seed |
 |---|---|---|---|---|---|---|---|---|---|---|
 | ExeaLM hybrid | 13.36M | 5 | 1.440 | 1.511 | 1.394 | 1.748 | **1.523** | 1.511 | 1.505 to 1.567 | 1.511, 1.511, 1.505, 1.521, 1.567 |
-| ExeaLM hybrid, no rotary attention in the starting menu (leak fix on) | 13.36M | 5 | 1.438 | 1.504 | 1.392 | 1.710 | **1.511** | 1.514 | 1.503 to 1.515 | 1.503, 1.509, 1.514, 1.515, 1.514 |
-| ExeaLM hybrid with the leak fix (#47) | 13.36M | 3 | 1.436 | 1.503 | 1.393 | 1.705 | **1.509** | 1.509 | 1.501 to 1.517 | 1.517, 1.509, 1.501 |
+| ExeaLM hybrid, no rotary attention in the starting menu (leak fix on) | 13.36M | 10 | 1.437 | 1.503 | 1.390 | 1.713 | **1.511** | 1.511 | 1.503 to 1.527 | 1.503, 1.509, 1.514, 1.515, 1.514, 1.505, 1.504, 1.507, 1.527, 1.512 |
+| ExeaLM hybrid with the leak fix (#47) | 13.36M | 8 | 1.437 | 1.507 | 1.393 | 1.725 | **1.516** | 1.511 | 1.501 to 1.544 | 1.517, 1.509, 1.501, 1.524, 1.544, 1.508, 1.512, 1.510 |
 | ExeaLM hybrid, circuit search on (leak fix on) | 13.36M | 2 | 1.443 | 1.520 | 1.395 | 1.812 | **1.542** | 1.542 | 1.520 to 1.565 | 1.520, 1.565 |
 | ExeaLM hybrid + one weight-alter slot per TONN layer | 13.42M | 2 | 1.439 | 1.510 | 1.394 | 1.735 | **1.520** | 1.520 | 1.519 to 1.520 | 1.520, 1.519 |
-| Qwen3.5-style | 13.51M | 5 | 1.444 | 1.513 | 1.400 | 1.729 | **1.522** | 1.521 | 1.517 to 1.529 | 1.519, 1.521, 1.529, 1.517, 1.522 |
-| Llama + gated attention + QK-norm | 13.49M | 5 | 1.440 | 1.515 | 1.400 | 1.735 | **1.523** | 1.521 | 1.518 to 1.528 | 1.525, 1.521, 1.528, 1.518, 1.520 |
+| Qwen3.5-style | 13.51M | 10 | 1.445 | 1.513 | 1.400 | 1.731 | **1.522** | 1.522 | 1.517 to 1.529 | 1.519, 1.521, 1.529, 1.517, 1.522, 1.520, 1.522, 1.524, 1.527, 1.522 |
+| Llama + gated attention + QK-norm | 13.49M | 10 | 1.440 | 1.514 | 1.400 | 1.733 | **1.522** | 1.521 | 1.515 to 1.528 | 1.525, 1.521, 1.528, 1.518, 1.520, 1.523, 1.515, 1.521, 1.521, 1.523 |
 | Llama | 13.1M | 5 | 1.466 | 1.538 | 1.418 | 1.776 | **1.550** | 1.548 | 1.544 to 1.559 | 1.544, 1.559, 1.551, 1.546, 1.548 |
 
 - ExeaLM hybrid against Qwen3.5-style: -0.001 bits per byte on average (positive: ExeaLM is better), better on 3 of 5 seeds (per seed +0.008, +0.010, +0.024, -0.004, -0.045)
 - ExeaLM hybrid against Llama + gated attention + QK-norm: -0.000 bits per byte on average (positive: ExeaLM is better), better on 3 of 5 seeds (per seed +0.014, +0.010, +0.023, -0.003, -0.047)
 - ExeaLM hybrid against Llama: +0.027 bits per byte on average (positive: ExeaLM is better), better on 4 of 5 seeds (per seed +0.034, +0.048, +0.046, +0.025, -0.019)
-- ExeaLM hybrid, no rotary attention in the starting menu (leak fix on) against Qwen3.5-style: +0.011 bits per byte on average (positive: ExeaLM is better), better on 5 of 5 seeds (per seed +0.016, +0.011, +0.015, +0.002, +0.008)
-- ExeaLM hybrid, no rotary attention in the starting menu (leak fix on) against Llama + gated attention + QK-norm: +0.012 bits per byte on average (positive: ExeaLM is better), better on 5 of 5 seeds (per seed +0.022, +0.012, +0.014, +0.003, +0.006)
+- ExeaLM hybrid, no rotary attention in the starting menu (leak fix on) against Qwen3.5-style: +0.011 bits per byte on average (positive: ExeaLM is better), better on 10 of 10 seeds (per seed +0.016, +0.011, +0.015, +0.002, +0.008, +0.014, +0.018, +0.016, +0.000, +0.010)
+- ExeaLM hybrid, no rotary attention in the starting menu (leak fix on) against Llama + gated attention + QK-norm: +0.011 bits per byte on average (positive: ExeaLM is better), better on 9 of 10 seeds (per seed +0.022, +0.012, +0.014, +0.003, +0.006, +0.017, +0.011, +0.014, -0.006, +0.011)
 - ExeaLM hybrid, no rotary attention in the starting menu (leak fix on) against Llama: +0.039 bits per byte on average (positive: ExeaLM is better), better on 5 of 5 seeds (per seed +0.042, +0.050, +0.037, +0.031, +0.034)
 
 - With the original starting menu, ExeaLM's median (1.511) is ahead of every baseline's, and seeds 0 to 2 beat every
@@ -41,7 +41,10 @@ section 6. Commands: `experiments/tokenizer_lm.py` (the `args` field of each fil
 - Leaving the rotary-attention circuit out of the starting menu did (`"init_weights": {..., "RP": 0}`): all five
   seeds land between 1.503 and 1.515, each ahead of every Qwen3.5-style run and every gated-Llama run. Rotary
   attention duplicates what the attention layers of the hybrid already do. This menu was chosen after seeing seed 4,
-  so treat it as a follow-up to confirm on new seeds, not as a pre-planned comparison.
+  so it was then run on seeds 5 to 9, which it had not seen: 1.505, 1.504, 1.507, 1.527, 1.512 (mean 1.511), against
+  1.523 for the Qwen3.5-style model and 1.521 for the gated Llama on the same seeds. It is ahead of the gated Llama on
+  4 of those 5 and level with the Qwen3.5-style model on seed 8 (1.5269 against 1.5270). The original menu on seeds
+  5 to 9 (leak fix on) averages 1.520, with another weak seed (1.544).
 - Seeds 0 and 1 reproduce the Mac Studio runs of 12 November (1.511 and 1.512 against 1.520 and 1.521 for the
   Qwen3.5-style model).
 
@@ -59,11 +62,11 @@ The fix is merged. The "leak fix on" rows in this file were run with it.
 | Model | Parameters | Seeds | English | Japanese wiki | Japanese web | Code | Mean | Median | Min to max | Per seed |
 |---|---|---|---|---|---|---|---|---|---|---|
 | ExeaLM hybrid (leak fix on) | 93.43M | 3 | 1.353 | 1.423 | 1.319 | 1.611 | **1.427** | 1.419 | 1.419 to 1.441 | 1.441, 1.419, 1.419 |
-| Qwen3.5-style | 95.67M | 1 | 1.370 | 1.454 | 1.343 | 1.675 | **1.461** | 1.461 | 1.461 to 1.461 | 1.461 |
+| Qwen3.5-style | 95.67M | 3 | 1.369 | 1.449 | 1.342 | 1.669 | **1.457** | 1.457 | 1.453 to 1.461 | 1.461, 1.453, 1.457 |
 | Llama + gated attention + QK-norm | 95.47M | 2 | 1.364 | 1.439 | 1.333 | 1.646 | **1.446** | 1.446 | 1.444 to 1.447 | 1.444, 1.447 |
 | Llama | 89.73M | 3 | 1.418 | 1.496 | 1.378 | 1.743 | **1.509** | 1.509 | 1.507 to 1.510 | 1.507, 1.510, 1.509 |
 
-- ExeaLM hybrid (leak fix on) against Qwen3.5-style: +0.019 bits per byte on average (positive: ExeaLM is better), better on 1 of 1 seeds (per seed +0.019)
+- ExeaLM hybrid (leak fix on) against Qwen3.5-style: +0.031 bits per byte on average (positive: ExeaLM is better), better on 3 of 3 seeds (per seed +0.019, +0.034, +0.038)
 - ExeaLM hybrid (leak fix on) against Llama + gated attention + QK-norm: +0.015 bits per byte on average (positive: ExeaLM is better), better on 2 of 2 seeds (per seed +0.003, +0.027)
 - ExeaLM hybrid (leak fix on) against Llama: +0.082 bits per byte on average (positive: ExeaLM is better), better on 3 of 3 seeds (per seed +0.065, +0.091, +0.090)
 
@@ -79,28 +82,42 @@ The fix is merged. The "leak fix on" rows in this file were run with it.
 One copy of the model reads four facts, another must answer questions about them, and only the path under test
 connects them. Chance is 1.6%. 0.8M parameters, 3,000 steps.
 
-| Path | Run | Facts passed | With the path cut |
-|---|---|---|---|
-| Board | seed 0 (from its log) | 99.9% | 2.1% |
-| Board | seed 1 | 99.8% | 1.3% |
-| Board | seed 2 | 99.8% | 1.5% |
-| Weight-alter | seed 0 (from its log) | 51.1% | 1.7% |
-| Weight-alter | seed 1 | 53.9% | 1.5% |
-| Weight-alter | seed 2 | 53.1% | 1.6% |
-| Weight-alter, 2 slots per layer | seed 0 | 53.1% | 1.5% |
-| Weight-alter, 4 slots per layer | seed 0 | 53.0% | 1.5% |
-| Weight-alter, edits to the MLP's input matrix | seed 0 | 49.5% | 1.9% |
-| Weight-alter, edits to the MLP's input matrix | seed 1 | 45.4% | 1.6% |
-| Weight-alter, edits to the MLP's input matrix | seed 2 | 48.4% | 1.3% |
+| Path | Run | Facts passed | With the path cut | By question, in the order asked |
+|---|---|---|---|---|
+| Board | seed 0 (from its log) | 99.9% | 2.1% |  |
+| Board | seed 1 | 99.8% | 1.3% |  |
+| Board | seed 2 | 99.8% | 1.5% |  |
+| Weight-alter | seed 0 (from its log) | 51.1% | 1.7% |  |
+| Weight-alter | seed 1 | 53.9% | 1.5% |  |
+| Weight-alter | seed 2 | 53.1% | 1.6% |  |
+| Weight-alter, 2 slots per layer | seed 0 | 53.1% | 1.5% |  |
+| Weight-alter, 4 slots per layer | seed 0 | 53.0% | 1.5% |  |
+| Weight-alter, edits to the MLP's input matrix | seed 0 | 49.5% | 1.9% |  |
+| Weight-alter, edits to the MLP's input matrix | seed 1 | 45.4% | 1.6% |  |
+| Weight-alter, edits to the MLP's input matrix | seed 2 | 48.4% | 1.3% |  |
+| Weight-alter, key from the edited layer | seed 0 | 99.7% | 1.4% | 99%, 100%, 100%, 100% |
+| Weight-alter, key from the edited layer | seed 1 | 100.0% | 1.6% | 100%, 100%, 100%, 100% |
+| Weight-alter, key from the edited layer | seed 2 | 100.0% | 2.1% | 100%, 100%, 100%, 100% |
+| Weight-alter, key from the edited layer, 8 facts | seed 0 | 100.0% | 1.4% | 100%, 100%, 100%, 100%, 100%, 100%, 100%, 100% |
+| Weight-alter, key from the edited layer, edits to the MLP's input matrix | seed 0 | 100.0% | 1.6% | 100%, 100%, 100%, 100% |
+| Weight-alter, key from the edited layer, edits to the MLP's input matrix | seed 1 | 100.0% | 1.7% | 100%, 100%, 100%, 100% |
+| Weight-alter, key from the edited layer, edits to the MLP's input matrix | seed 2 | 100.0% | 1.9% | 100%, 100%, 100%, 100% |
+| Weight-alter, rerun scored by question | seed 0 | 49.5% | 1.8% | 25%, 34%, 49%, 90% |
+| Weight-alter, rerun scored by question | seed 1 | 51.2% | 1.4% | 27%, 35%, 49%, 93% |
+| Weight-alter, rerun scored by question | seed 2 | 52.1% | 1.7% | 30%, 36%, 50%, 93% |
 
-- The board passes the facts almost every time. Weight-alter passes about half, on every seed and in every variant
-  tried: 1, 2 or 4 slots per layer, writes corrected so they do not disturb each other (`exact_writes`, 49 to 51% when
+- The board passes the facts almost every time. With a learned key (the first version: both vectors of an edit are
+  learned maps of the writing slot's input), weight-alter passes about half, on every seed and in every variant tried:
+  1, 2 or 4 slots per layer, writes corrected so they do not disturb each other (`exact_writes`, 49 to 51% when
   stopped at 1,750 to 2,250 steps), learned positions for the key and the value (41 to 45% at 750 to 1,000 steps),
-  and edits to the MLP's input matrix. Logs of the stopped runs are in `results/weight_alter/logs/`. A 12,000-step
-  run was stopped at step 3,000 at 49.5%.
+  and edits to the MLP's input matrix. Logs of the stopped runs are in `results/weight_alter/logs/`.
 - 52% is what an asker scores if it knows which four answers exist, not which question each belongs to, and rules
-  out the answers it has already seen. So the likely reading is that weight changes carry the values across but the
-  model has not learned to bind them to keys. This was not checked question by question.
+  out the answers it has already seen: 25%, 33%, 50% and 100% on the four questions in turn. The reruns scored by
+  question show that pattern (25 to 30%, 34 to 36%, 49 to 50%, 90 to 93%). The edits carried the values across; the
+  model did not learn to bind them to keys.
+- With the key taken from the edited layer (`wa_key="hidden"`: the key of an edit is what the edited matrix itself
+  receives at the picked positions of the writer's chunk, the key ROME uses), all six runs pass 99% at step 250 and
+  end at 99.7 to 100%, 1.4 to 2.1% with the path cut. With eight facts: 100% (one seed).
 - On text, one self-editing weight-alter slot per TONN layer costs about 0.008 bits per byte at 13M (section 1,
   2 seeds, original write rule).
 
@@ -149,5 +166,6 @@ Effective TFLOP/s is 6 x parameters x tokens per second. No compiled or fused ke
 - Short runs: 49M tokens, far from convergence.
 - The Qwen3.5-style baseline is a small build of the layout, not the released models.
 - The memory circuits are shown on tasks built for them. None has lowered the loss on ordinary text.
-- The no-rotary-attention menu was chosen after the fact.
+- The no-rotary-attention menu was chosen after the fact; it held on five new seeds at 13M and is untested at 0.1B.
+- The new weight-alter key has been run on the relay only, not in the combined model or on text.
 - Nothing above 0.1B.

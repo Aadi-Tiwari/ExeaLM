@@ -12,7 +12,7 @@ own build of that layout (Gated DeltaNet and gated attention layers, about 3 to 
 the released Qwen3.5 weights. Runs shared the GPU, so their wall-clock seconds are not comparable; speed is in
 section 6. Commands: `experiments/tokenizer_lm.py` (the `args` field of each file holds the exact arguments).
 
-## 1. 13M parameters, five seeds
+## 1. 13M parameters, five seeds (0 to 4), then five more (5 to 9) for some rows
 
 {{TABLE_13M}}
 
@@ -27,7 +27,10 @@ section 6. Commands: `experiments/tokenizer_lm.py` (the `args` field of each fil
 - Leaving the rotary-attention circuit out of the starting menu did (`"init_weights": {..., "RP": 0}`): all five
   seeds land between 1.503 and 1.515, each ahead of every Qwen3.5-style run and every gated-Llama run. Rotary
   attention duplicates what the attention layers of the hybrid already do. This menu was chosen after seeing seed 4,
-  so treat it as a follow-up to confirm on new seeds, not as a pre-planned comparison.
+  so it was then run on seeds 5 to 9, which it had not seen: 1.505, 1.504, 1.507, 1.527, 1.512 (mean 1.511), against
+  1.523 for the Qwen3.5-style model and 1.521 for the gated Llama on the same seeds. It is ahead of the gated Llama on
+  4 of those 5 and level with the Qwen3.5-style model on seed 8 (1.5269 against 1.5270). The original menu on seeds
+  5 to 9 (leak fix on) averages 1.520, with another weak seed (1.544).
 - Seeds 0 and 1 reproduce the Mac Studio runs of 12 November (1.511 and 1.512 against 1.520 and 1.521 for the
   Qwen3.5-style model).
 
@@ -60,14 +63,18 @@ connects them. Chance is 1.6%. 0.8M parameters, 3,000 steps.
 
 {{RELAY}}
 
-- The board passes the facts almost every time. Weight-alter passes about half, on every seed and in every variant
-  tried: 1, 2 or 4 slots per layer, writes corrected so they do not disturb each other (`exact_writes`, 49 to 51% when
+- The board passes the facts almost every time. With a learned key (the first version: both vectors of an edit are
+  learned maps of the writing slot's input), weight-alter passes about half, on every seed and in every variant tried:
+  1, 2 or 4 slots per layer, writes corrected so they do not disturb each other (`exact_writes`, 49 to 51% when
   stopped at 1,750 to 2,250 steps), learned positions for the key and the value (41 to 45% at 750 to 1,000 steps),
-  and edits to the MLP's input matrix. Logs of the stopped runs are in `results/weight_alter/logs/`. A 12,000-step
-  run was stopped at step 3,000 at 49.5%.
+  and edits to the MLP's input matrix. Logs of the stopped runs are in `results/weight_alter/logs/`.
 - 52% is what an asker scores if it knows which four answers exist, not which question each belongs to, and rules
-  out the answers it has already seen. So the likely reading is that weight changes carry the values across but the
-  model has not learned to bind them to keys. This was not checked question by question.
+  out the answers it has already seen: 25%, 33%, 50% and 100% on the four questions in turn. The reruns scored by
+  question show that pattern (25 to 30%, 34 to 36%, 49 to 50%, 90 to 93%). The edits carried the values across; the
+  model did not learn to bind them to keys.
+- With the key taken from the edited layer (`wa_key="hidden"`: the key of an edit is what the edited matrix itself
+  receives at the picked positions of the writer's chunk, the key ROME uses), all six runs pass 99% at step 250 and
+  end at 99.7 to 100%, 1.4 to 2.1% with the path cut. With eight facts: 100% (one seed).
 - On text, one self-editing weight-alter slot per TONN layer costs about 0.008 bits per byte at 13M (section 1,
   2 seeds, original write rule).
 
@@ -100,5 +107,6 @@ Effective TFLOP/s is 6 x parameters x tokens per second. No compiled or fused ke
 - Short runs: 49M tokens, far from convergence.
 - The Qwen3.5-style baseline is a small build of the layout, not the released models.
 - The memory circuits are shown on tasks built for them. None has lowered the loss on ordinary text.
-- The no-rotary-attention menu was chosen after the fact.
+- The no-rotary-attention menu was chosen after the fact; it held on five new seeds at 13M and is untested at 0.1B.
+- The new weight-alter key has been run on the relay only, not in the combined model or on text.
 - Nothing above 0.1B.
