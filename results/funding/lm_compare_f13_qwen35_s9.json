@@ -1,0 +1,60 @@
+{
+ "args": {
+  "root": "/shared-docker/ExeaLM/data/tokpack",
+  "toks": "bpe32k",
+  "mix": "0.5,0.3,0.2",
+  "steps": 3000,
+  "seconds": 0,
+  "batch": 32,
+  "seq": 512,
+  "lr": 0.002,
+  "eval_batches": 16,
+  "models": "llama",
+  "seeds": "9",
+  "cfg": "{}",
+  "llama_cfg": "{\"delta_layers\": [0, 1, 2, 4], \"attn_gate\": true, \"qk_norm\": true}",
+  "size": "{}",
+  "tag": "f13_qwen35_s9",
+  "device": "auto",
+  "out": "/shared-docker/ExeaLM/results/funding"
+ },
+ "device": "cuda",
+ "rows": [
+  {
+   "model": "llama",
+   "tag": "f13_qwen35_s9",
+   "cfg": "{}",
+   "lr": 0.002,
+   "seed": 9,
+   "tokenizer": "bpe32k",
+   "vocab": 32768,
+   "params_M": 13.51,
+   "steps": 3000,
+   "seconds_budget": 0,
+   "tokens_seen": 49152000,
+   "bytes_seen": 202084646,
+   "secs": 1505.8,
+   "bits_per_byte": {
+    "en": 1.4446,
+    "ja_wiki": 1.5137,
+    "ja_web": 1.3962,
+    "code": 1.7331
+   },
+   "architecture": null,
+   "train_loss_every_250": [
+    7.9486,
+    5.9414,
+    5.3948,
+    5.1173,
+    4.8751,
+    4.6185,
+    4.4701,
+    4.366,
+    4.2762,
+    4.239,
+    4.1455,
+    4.0158
+   ]
+  }
+ ]
+}

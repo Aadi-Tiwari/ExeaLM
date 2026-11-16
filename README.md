@@ -261,8 +261,9 @@ Starting points. Almost everything here runs on a laptop or a free Google Colab 
 - [ ] The full 17M model against a gated Llama on the same batches (the fair baseline now that ExeaLM is gated)
 - [ ] Gated DeltaNet as a TONN circuit type the search can choose ([#30](https://github.com/exea-labs/ExeaLM/issues/30)); other new types, for example sliding-window attention
 - [x] A circuit that has not been measured yet was scaled by the batch it was reading, so its output depended on later tokens and on other rows until its first training step. Fixed in [#47](https://github.com/exea-labs/ExeaLM/pull/47) (a constant scale until the first measurement). On real text at 13M the fix changes the score by 0.0001 bits per byte (3 seeds, [results/funding](results/funding/README.md))
-- [ ] The 13M hybrid without rotary attention in the starting menu scored 1.503 to 1.515 on 5 seeds, ahead of every Qwen3.5-style and gated-Llama run. The menu was chosen after seeing a weak seed. Confirm it on new seeds before it becomes the default
-- [ ] Weight-alter passes about half of what the board passes on the relay (52% against 99.8%). Find out why it stops there
+- [ ] The 13M hybrid without rotary attention in the starting menu scored 1.511 on average over 10 seeds (Qwen3.5-style 1.522, gated Llama 1.522), 5 of them run after the menu was chosen. Confirm it at 0.1B, then make it the default
+- [x] Weight-alter passed about half of what the board passes on the relay (52% against 99.8%), because the model did not learn to tie values to keys. With the key taken from the edited layer (`wa_key="hidden"`) it passes 99.7 to 100% (6 runs)
+- [ ] Weight-alter with `wa_key="hidden"` in the combined model and on real text: does it help or cost loss?
 - [ ] Shape sweep at fixed parameters: depth, width, slots per layer, channels per slot
 - [ ] Search schedule: how long to search, how much to replace, how long new circuits are protected (on the hybrid with a good start it adds about 0.001 today)
 - [ ] Which circuit types survive the search, and does that change from `tiny` to `small`?

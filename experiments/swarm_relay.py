@@ -67,16 +67,21 @@ def score(model, batches, swarm_size, dev):
     model.eval()
     hit = n = 0
     bits = 0.0
+    pos = None
     for x, y in batches:
         x, y = x.to(dev), y.to(dev)
         logits = model(x, MemoryContext(swarm_size=swarm_size))[0].float()
         m = y >= 0
         lp = torch.log_softmax(logits[m], -1)
         bits += float(-lp.gather(1, y[m].view(-1, 1)).sum()) / math.log(2)
-        hit += int((lp.argmax(-1) == y[m]).sum())
+        ok = (lp.argmax(-1) == y[m]).float()
+        hit += int(ok.sum())
+        per = ok.view(int(m.any(1).sum()), -1).sum(0)      # by question number: 1st, 2nd, ... question of each asker
+        pos = per if pos is None else pos + per
         n += int(m.sum())
     model.train()
-    return dict(acc=round(hit / n, 4), bits=round(bits / n, 3))
+    rows = n / len(pos)
+    return dict(acc=round(hit / n, 4), bits=round(bits / n, 3), by_question=[round(float(p) / rows, 3) for p in pos])
 
 
 def run(arm, a, dev):
@@ -84,7 +89,7 @@ def run(arm, a, dev):
     extra = {}
     if a.memory == "WA":           # no board: facts can only travel as changes to the asker's weights (exealm/model/alter.py)
         extra = dict(pinned={"WA": a.wa_slots}, menu=tuple(t for t in MENU if t not in ("RG", "AG")) + ("WA",),
-                     wa_scope=a.wa_scope, wa_matrix=a.wa_matrix)
+                     wa_scope=a.wa_scope, wa_matrix=a.wa_matrix, wa_key=a.wa_key)
     elif a.memory == "none":       # neither: the control for both
         extra = dict(pinned={}, menu=tuple(t for t in MENU if t not in ("RG", "AG")))
     cfg = get_config("tiny", vocab_size=256, chunk_pool=a.pool, board_chunk=a.board_chunk, d=a.d, n_layers=a.layers, slots=a.slots, h=a.h, chunk=a.chunk,
@@ -138,6 +143,7 @@ def main():
     ap.add_argument("--wa_slots", type=int, default=1, help="weight-alter slots per layer (with --memory WA)")
     ap.add_argument("--wa_scope", default="others", choices=["self", "others", "all"])
     ap.add_argument("--wa_matrix", default="out", choices=["out", "in"])
+    ap.add_argument("--wa_key", default="learned", choices=["learned", "hidden"])
     ap.add_argument("--device", default="auto")
     ap.add_argument("--out", default="results/swarm_relay")
     a = ap.parse_args()
@@ -149,6 +155,7 @@ def main():
     if a.memory != "AG":
         tag += f"_{a.memory.lower()}" + (f"{a.wa_slots}" if a.memory == "WA" and a.wa_slots != 1 else "")
         tag += "_in" if a.memory == "WA" and a.wa_matrix == "in" else ""
+        tag += "_hkey" if a.memory == "WA" and a.wa_key == "hidden" else ""
     path = os.path.join(a.out, f"relay{tag}_seed{a.seed}.json")
     json.dump(out, open(path, "w"), indent=1)
     print("WROTE", path)

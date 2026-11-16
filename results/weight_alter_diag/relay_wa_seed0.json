@@ -1,0 +1,366 @@
+{
+ "args": {
+  "arms": "swarm",
+  "steps": 3000,
+  "agents": 2,
+  "swarms": 32,
+  "facts": 4,
+  "fill": 64,
+  "chunk": 8,
+  "d": 128,
+  "layers": 4,
+  "slots": 8,
+  "h": 16,
+  "lr": 0.002,
+  "eval_every": 250,
+  "eval_batches": 16,
+  "seed": 0,
+  "board_chunk": 0,
+  "pool": "mean",
+  "memory": "WA",
+  "wa_slots": 1,
+  "wa_scope": "others",
+  "wa_matrix": "out",
+  "wa_key": "learned",
+  "device": "auto",
+  "out": "results/weight_alter_diag"
+ },
+ "device": "cuda",
+ "chance": {
+  "acc": 0.0156,
+  "bits": 6.0
+ },
+ "runs": [
+  {
+   "arm": "swarm",
+   "params": 844216,
+   "final": {
+    "arm": "swarm",
+    "step": 3000,
+    "secs": 2026.1,
+    "shared": {
+     "acc": 0.4951,
+     "bits": 1.763,
+     "by_question": [
+      0.25,
+      0.34,
+      0.49,
+      0.9
+     ]
+    },
+    "cut": {
+     "acc": 0.0176,
+     "bits": 7.126,
+     "by_question": [
+      0.014,
+      0.02,
+      0.021,
+      0.016
+     ]
+    }
+   },
+   "curve": [
+    {
+     "arm": "swarm",
+     "step": 250,
+     "secs": 239.7,
+     "shared": {
+      "acc": 0.2524,
+      "bits": 3.742,
+      "by_question": [
+       0.281,
+       0.25,
+       0.23,
+       0.248
+      ]
+     },
+     "cut": {
+      "acc": 0.0146,
+      "bits": 6.849,
+      "by_question": [
+       0.012,
+       0.018,
+       0.02,
+       0.01
+      ]
+     }
+    },
+    {
+     "arm": "swarm",
+     "step": 500,
+     "secs": 479.7,
+     "shared": {
+      "acc": 0.3232,
+      "bits": 3.039,
+      "by_question": [
+       0.258,
+       0.289,
+       0.328,
+       0.418
+      ]
+     },
+     "cut": {
+      "acc": 0.019,
+      "bits": 6.549,
+      "by_question": [
+       0.027,
+       0.021,
+       0.018,
+       0.01
+      ]
+     }
+    },
+    {
+     "arm": "swarm",
+     "step": 750,
+     "secs": 640.9,
+     "shared": {
+      "acc": 0.4194,
+      "bits": 2.492,
+      "by_question": [
+       0.275,
+       0.326,
+       0.457,
+       0.619
+      ]
+     },
+     "cut": {
+      "acc": 0.0215,
+      "bits": 6.814,
+      "by_question": [
+       0.014,
+       0.027,
+       0.021,
+       0.023
+      ]
+     }
+    },
+    {
+     "arm": "swarm",
+     "step": 1000,
+     "secs": 752.5,
+     "shared": {
+      "acc": 0.4131,
+      "bits": 2.578,
+      "by_question": [
+       0.24,
+       0.328,
+       0.434,
+       0.65
+      ]
+     },
+     "cut": {
+      "acc": 0.0205,
+      "bits": 7.115,
+      "by_question": [
+       0.025,
+       0.016,
+       0.014,
+       0.027
+      ]
+     }
+    },
+    {
+     "arm": "swarm",
+     "step": 1250,
+     "secs": 901.4,
+     "shared": {
+      "acc": 0.4546,
+      "bits": 2.182,
+      "by_question": [
+       0.26,
+       0.361,
+       0.473,
+       0.725
+      ]
+     },
+     "cut": {
+      "acc": 0.0186,
+      "bits": 7.114,
+      "by_question": [
+       0.014,
+       0.02,
+       0.023,
+       0.018
+      ]
+     }
+    },
+    {
+     "arm": "swarm",
+     "step": 1500,
+     "secs": 1052.6,
+     "shared": {
+      "acc": 0.4761,
+      "bits": 2.249,
+      "by_question": [
+       0.273,
+       0.379,
+       0.477,
+       0.775
+      ]
+     },
+     "cut": {
+      "acc": 0.0186,
+      "bits": 7.319,
+      "by_question": [
+       0.014,
+       0.02,
+       0.025,
+       0.016
+      ]
+     }
+    },
+    {
+     "arm": "swarm",
+     "step": 1750,
+     "secs": 1204.5,
+     "shared": {
+      "acc": 0.4473,
+      "bits": 2.073,
+      "by_question": [
+       0.23,
+       0.285,
+       0.484,
+       0.789
+      ]
+     },
+     "cut": {
+      "acc": 0.0137,
+      "bits": 7.16,
+      "by_question": [
+       0.008,
+       0.014,
+       0.021,
+       0.012
+      ]
+     }
+    },
+    {
+     "arm": "swarm",
+     "step": 2000,
+     "secs": 1397.1,
+     "shared": {
+      "acc": 0.4795,
+      "bits": 1.971,
+      "by_question": [
+       0.264,
+       0.33,
+       0.477,
+       0.848
+      ]
+     },
+     "cut": {
+      "acc": 0.0122,
+      "bits": 7.09,
+      "by_question": [
+       0.012,
+       0.014,
+       0.006,
+       0.018
+      ]
+     }
+    },
+    {
+     "arm": "swarm",
+     "step": 2250,
+     "secs": 1631.1,
+     "shared": {
+      "acc": 0.4868,
+      "bits": 1.97,
+      "by_question": [
+       0.281,
+       0.326,
+       0.488,
+       0.852
+      ]
+     },
+     "cut": {
+      "acc": 0.0181,
+      "bits": 6.94,
+      "by_question": [
+       0.018,
+       0.025,
+       0.016,
+       0.014
+      ]
+     }
+    },
+    {
+     "arm": "swarm",
+     "step": 2500,
+     "secs": 1781.6,
+     "shared": {
+      "acc": 0.4746,
+      "bits": 1.931,
+      "by_question": [
+       0.281,
+       0.318,
+       0.447,
+       0.852
+      ]
+     },
+     "cut": {
+      "acc": 0.0205,
+      "bits": 7.237,
+      "by_question": [
+       0.025,
+       0.023,
+       0.016,
+       0.018
+      ]
+     }
+    },
+    {
+     "arm": "swarm",
+     "step": 2750,
+     "secs": 1908.1,
+     "shared": {
+      "acc": 0.4966,
+      "bits": 1.871,
+      "by_question": [
+       0.281,
+       0.332,
+       0.502,
+       0.871
+      ]
+     },
+     "cut": {
+      "acc": 0.0171,
+      "bits": 7.283,
+      "by_question": [
+       0.014,
+       0.02,
+       0.023,
+       0.012
+      ]
+     }
+    },
+    {
+     "arm": "swarm",
+     "step": 3000,
+     "secs": 2026.1,
+     "shared": {
+      "acc": 0.4951,
+      "bits": 1.763,
+      "by_question": [
+       0.25,
+       0.34,
+       0.49,
+       0.9
+      ]
+     },
+     "cut": {
+      "acc": 0.0176,
+      "bits": 7.126,
+      "by_question": [
+       0.014,
+       0.02,
+       0.021,
+       0.016
+      ]
+     }
+    }
+   ]
+  }
+ ]
+}
