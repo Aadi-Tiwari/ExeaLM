@@ -1,12 +1,14 @@
 # ExeaLM
 
+[日本語](README.ja.md)
+
 An open language model built by high schoolers, run by [Exea Labs](https://exealabs.org). Code and weights are public under Apache 2.0.
 
 **The idea:** ExeaLM is a 0.1B-parameter (about 100 million) language model, pretrained from scratch on about 100 billion tokens and then post-trained into an assistant, like any other LLM. What's different is the architecture, **TONN**, which builds two new abilities into every layer: **its own RAG**, where the model learns its own embeddings, decides what to search for, and pulls text from a read-only datastore, and **agent-to-agent communication**, where copies of the model post messages to a shared board and read each other's. Both are circuits inside the network, trained end to end like everything else, not tools bolted on afterwards.
 
 **The bet:** a 0.1B model can take on problems far bigger than its size, because it doesn't have to do everything alone. Its knowledge doesn't all have to fit in 100 million weights, because the model looks things up through its own RAG. A large problem doesn't have to fit in one copy's context or skill, because a swarm of copies splits the work and shares what they find through the board. And because both abilities are part of the architecture from the first step of pretraining, the model learns to search and collaborate the way it learns language, not through tools added at the end. This is a hypothesis we are testing, not a result yet. The headline experiment is a swarm of 0.1B agents with retrieval against a single larger model on the same tasks, at the same inference compute.
 
-**Status:** research preview. The 0.1B model is not trained yet. The model code (TONN, the retrieval circuit, the agent-board circuit, the architecture search) runs and is tested, and small models (17M parameters, and one short 0.1B run) have been trained with it: their checkpoints, the tokenizer and every result file are on [Hugging Face](https://huggingface.co/exea-labs/ExeaLM). The data scripts work on small samples. The pretraining loop, the SFT loop and an lm-evaluation-harness adapter are written. Downloading the full data, training at scale and the rest of post-training are open tasks.
+**Status:** research preview. The 0.1B model is not trained yet. The model code (TONN, the retrieval circuit, the agent-board circuit, the architecture search) runs and is tested, and small models (13M to 18M parameters, and short 0.1B runs) have been trained with it: their checkpoints, the tokenizer and every result file are on [Hugging Face](https://huggingface.co/exea-labs/ExeaLM). The data scripts work on small samples. The pretraining loop, the three post-training loops (SFT, DPO, GRPO) and an lm-evaluation-harness adapter are written and tested on tiny models. Downloading the full data and training at scale are open tasks.
 
 ## Join
 
@@ -349,10 +351,13 @@ Starting points. Almost everything here runs on a laptop or a free Google Colab 
 
 ### Post-training (`exealm/train/`)
 - [x] SFT loop and data loader (`python -m exealm.train.sft --ckpt ... --data conversations.jsonl.gz`): one conversation per row, padded on the right and grouped by length, so conversations cannot see each other. Tested on `tiny`: it learns a toy question-answer task and answers through the chat demo
-- [ ] SFT data: download and format the sources (IFM/SFT-Reasoning, LLM-jp instruction data) into conversation files, with licenses
+- [x] SFT, preference and RL-task data formatters (`python -m exealm.data.post --list`): eight open sources turned into the files the three loops read, each with its license and the revision it was checked at. Checked on 100 live rows per source ([results/post_data](results/post_data/live_check.json)); IFM/SFT-Reasoning cannot be split into turns and stays pretraining text
+- [ ] Build the SFT mix at the DATA.md shares (the math and code reasoning sets and WildChat are not formatted yet) and count its tokens
 - [x] DPO loop (`python -m exealm.train.dpo --ckpt ... --data prefs.jsonl.gz`): a frozen copy of the starting model is the reference; one row per answer, as in SFT. Tested on `tiny`: it learns to prefer the chosen answers
-- [ ] DPO data: preference pairs in English and Japanese, with licenses
-- [ ] GRPO loop with math and code rewards
+- [x] DPO data: three English preference sets formatted (`tulu3-pref`, `dolci-pref`, `ultrafeedback` in `exealm/data/post.py`)
+- [ ] Japanese preference pairs: no open set found yet
+- [x] GRPO loop with math and code rewards (`python -m exealm.train.grpo --ckpt ... --data tasks.jsonl.gz`): samples a group of answers per task, scores them, and updates against a frozen reference. Rewards: `math` (boxed answer or last number), `exact`, and `code` (runs the answer with test code; refused without `--allow_code_exec`). Tested on `tiny`: it fixes a model whose most likely answer was wrong
+- [ ] Rewards for instruction-following constraints (RLVR) and for Japanese tasks; a real sandbox for the code reward
 - [x] Chat template (`exealm/chat.py`: `chat_prompt` and the same format as a Jinja template, tested to give the same tokens)
 - [ ] Do long reasoning traces help a model this small? Test on an existing small open model such as SmolLM2-135M (Colab)
 
@@ -368,7 +373,7 @@ Starting points. Almost everything here runs on a laptop or a free Google Colab 
 - [x] Demo: chat with one agent or a swarm (`python -m exealm.chat`; `--raw` continues text, which is what today's base checkpoints can do)
 - [ ] Put the demo on the web (a Hugging Face Space) once a checkpoint has been through post-training
 - [x] (starter) Diagrams: a TONN layer, RG, AG, a swarm (interactive, on the blog: https://blog.exealabs.org/architecture/)
-- [ ] (starter) Japanese translation of this README ([#13](https://github.com/exea-labs/ExeaLM/issues/13))
+- [x] (starter) Japanese translation of this README ([README.ja.md](README.ja.md), [#13](https://github.com/exea-labs/ExeaLM/issues/13)). It needs a native reader's review, and it has to follow this file when the to-do list changes
 - [x] (starter) Glossary of terms ([docs/glossary.md](docs/glossary.md))
 - [x] (starter) Beginner notebook: train the `tiny` model and look inside it ([notebooks/tiny_tour.ipynb](notebooks/tiny_tour.ipynb), [open in Colab](https://colab.research.google.com/github/exea-labs/ExeaLM/blob/main/notebooks/tiny_tour.ipynb), [#14](https://github.com/exea-labs/ExeaLM/issues/14))
 - [ ] Technical report

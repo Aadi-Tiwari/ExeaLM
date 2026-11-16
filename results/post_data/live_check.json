@@ -1,0 +1,54 @@
+{
+ "tulu3-sft": {
+  "read": 100,
+  "kept": 100,
+  "dropped": {},
+  "loads": 100
+ },
+ "smoltalk": {
+  "read": 100,
+  "kept": 100,
+  "dropped": {},
+  "loads": 100
+ },
+ "dolci-sft": {
+  "read": 100,
+  "kept": 99,
+  "dropped": {
+   "empty content": 1
+  },
+  "loads": 99
+ },
+ "dolly-ja": {
+  "read": 100,
+  "kept": 100,
+  "dropped": {},
+  "loads": 100
+ },
+ "tulu3-pref": {
+  "read": 100,
+  "kept": 100,
+  "dropped": {},
+  "loads": 100
+ },
+ "dolci-pref": {
+  "read": 100,
+  "kept": 99,
+  "dropped": {
+   "the two answers are empty or the same": 1
+  },
+  "loads": 99
+ },
+ "ultrafeedback": {
+  "read": 100,
+  "kept": 100,
+  "dropped": {},
+  "loads": 100
+ },
+ "rlvr": {
+  "read": 100,
+  "kept": 100,
+  "dropped": {},
+  "loads": 100
+ }
+}
