@@ -1,0 +1,76 @@
+{
+ "args": {
+  "root": "/shared-docker/ExeaLM/data/tokpack",
+  "toks": "bpe32k",
+  "mix": "0.5,0.3,0.2",
+  "steps": 3000,
+  "seconds": 0,
+  "batch": 32,
+  "seq": 512,
+  "lr": 0.002,
+  "eval_batches": 16,
+  "models": "tonn_core_search",
+  "seeds": "4",
+  "cfg": "{\"attn_layers\": [1, 2, 4, 5], \"init_weights\": {\"C\": 4, \"G\": 0.25, \"D\": 0.25}, \"attn_gate\": true, \"qk_norm\": true}",
+  "llama_cfg": "{}",
+  "size": "{}",
+  "tag": "f13_hybrid_gate_search_fix_s4",
+  "device": "auto",
+  "out": "/shared-docker/ExeaLM/results/funding"
+ },
+ "device": "cuda",
+ "rows": [
+  {
+   "model": "tonn_core_search",
+   "tag": "f13_hybrid_gate_search_fix_s4",
+   "cfg": "{\"attn_layers\": [1, 2, 4, 5], \"init_weights\": {\"C\": 4, \"G\": 0.25, \"D\": 0.25}, \"attn_gate\": true, \"qk_norm\": true}",
+   "lr": 0.002,
+   "seed": 4,
+   "tokenizer": "bpe32k",
+   "vocab": 32768,
+   "params_M": 13.36,
+   "steps": 3000,
+   "seconds_budget": 0,
+   "tokens_seen": 49152000,
+   "bytes_seen": 202084646,
+   "secs": 484.8,
+   "bits_per_byte": {
+    "en": 1.4449,
+    "ja_wiki": 1.5291,
+    "ja_web": 1.3966,
+    "code": 1.8911
+   },
+   "architecture": [
+    {
+     "M": 2,
+     "G": 1,
+     "I": 1,
+     "RP": 3,
+     "C": 1
+    },
+    {
+     "C": 2,
+     "I": 2,
+     "M": 1,
+     "D": 1,
+     "RP": 1,
+     "EP": 1
+    }
+   ],
+   "train_loss_every_250": [
+    7.3188,
+    5.4134,
+    4.9309,
+    4.6977,
+    4.5659,
+    4.4967,
+    4.378,
+    4.3481,
+    4.2816,
+    4.2758,
+    4.1165,
+    4.0333
+   ]
+  }
+ ]
+}

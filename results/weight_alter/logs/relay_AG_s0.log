@@ -1,0 +1,17 @@
+{"arm": "swarm", "step": 250, "secs": 68.8, "shared": {"acc": 0.9897, "bits": 0.463}, "cut": {"acc": 0.0171, "bits": 9.214}}
+{"arm": "swarm", "step": 500, "secs": 129.4, "shared": {"acc": 0.9858, "bits": 0.123}, "cut": {"acc": 0.0171, "bits": 13.511}}
+{"arm": "swarm", "step": 750, "secs": 184.4, "shared": {"acc": 0.9932, "bits": 0.062}, "cut": {"acc": 0.0171, "bits": 16.881}}
+{"arm": "swarm", "step": 1000, "secs": 236.1, "shared": {"acc": 0.9995, "bits": 0.006}, "cut": {"acc": 0.0181, "bits": 17.374}}
+{"arm": "swarm", "step": 1250, "secs": 288.7, "shared": {"acc": 0.9966, "bits": 0.047}, "cut": {"acc": 0.0142, "bits": 19.925}}
+{"arm": "swarm", "step": 1500, "secs": 340.7, "shared": {"acc": 0.9966, "bits": 0.044}, "cut": {"acc": 0.0176, "bits": 19.291}}
+{"arm": "swarm", "step": 1750, "secs": 386.7, "shared": {"acc": 0.9961, "bits": 0.032}, "cut": {"acc": 0.0122, "bits": 20.42}}
+{"arm": "swarm", "step": 2000, "secs": 433.6, "shared": {"acc": 0.9976, "bits": 0.035}, "cut": {"acc": 0.0132, "bits": 21.95}}
+{"arm": "swarm", "step": 2250, "secs": 449.0, "shared": {"acc": 0.9985, "bits": 0.011}, "cut": {"acc": 0.0156, "bits": 21.852}}
+{"arm": "swarm", "step": 2500, "secs": 461.2, "shared": {"acc": 1.0, "bits": 0.002}, "cut": {"acc": 0.0098, "bits": 21.742}}
+{"arm": "swarm", "step": 2750, "secs": 473.1, "shared": {"acc": 0.9976, "bits": 0.032}, "cut": {"acc": 0.0166, "bits": 23.533}}
+{"arm": "swarm", "step": 3000, "secs": 485.3, "shared": {"acc": 0.999, "bits": 0.01}, "cut": {"acc": 0.021, "bits": 22.914}}
+{"arm": "solo", "step": 250, "secs": 11.3, "shared": {"acc": 0.0151, "bits": 6.044}, "cut": {"acc": 0.0151, "bits": 6.044}}
+{"arm": "solo", "step": 500, "secs": 23.2, "shared": {"acc": 0.0161, "bits": 6.019}, "cut": {"acc": 0.0161, "bits": 6.019}}
+{"arm": "solo", "step": 750, "secs": 35.1, "shared": {"acc": 0.0142, "bits": 6.019}, "cut": {"acc": 0.0142, "bits": 6.019}}
+{"arm": "solo", "step": 1000, "secs": 47.0, "shared": {"acc": 0.0176, "bits": 6.01}, "cut": {"acc": 0.0176, "bits": 6.01}}
+{"arm": "solo", "step": 1250, "secs": 58.9, "shared": {"acc": 0.0122, "bits": 6.006}, "cut": {"acc": 0.0122, "bits": 6.006}}

@@ -1,0 +1,7 @@
+{"arm": "swarm", "step": 250, "secs": 164.0, "shared": {"acc": 0.228, "bits": 4.31}, "cut": {"acc": 0.0166, "bits": 6.982}}
+{"arm": "swarm", "step": 500, "secs": 319.0, "shared": {"acc": 0.3916, "bits": 2.805}, "cut": {"acc": 0.0107, "bits": 7.345}}
+{"arm": "swarm", "step": 750, "secs": 497.5, "shared": {"acc": 0.437, "bits": 2.525}, "cut": {"acc": 0.0122, "bits": 7.44}}
+{"arm": "swarm", "step": 1000, "secs": 625.7, "shared": {"acc": 0.4624, "bits": 2.265}, "cut": {"acc": 0.0127, "bits": 7.151}}
+{"arm": "swarm", "step": 1250, "secs": 746.9, "shared": {"acc": 0.4756, "bits": 2.203}, "cut": {"acc": 0.0137, "bits": 7.034}}
+{"arm": "swarm", "step": 1500, "secs": 868.3, "shared": {"acc": 0.4795, "bits": 2.074}, "cut": {"acc": 0.0137, "bits": 7.446}}
+{"arm": "swarm", "step": 1750, "secs": 1015.2, "shared": {"acc": 0.4883, "bits": 1.987}, "cut": {"acc": 0.0117, "bits": 7.476}}

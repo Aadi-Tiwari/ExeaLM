@@ -1,0 +1,114 @@
+{
+ "args": {
+  "root": "/shared-docker/ExeaLM/data/tokpack",
+  "toks": "bpe32k",
+  "mix": "0.5,0.3,0.2",
+  "steps": 3000,
+  "seconds": 0,
+  "batch": 32,
+  "seq": 512,
+  "lr": 0.001,
+  "eval_batches": 16,
+  "models": "tonn_core",
+  "seeds": "2",
+  "cfg": "{\"attn_layers\": [1, 2, 4, 5, 7, 8, 10, 11, 13], \"init_weights\": {\"C\": 4, \"G\": 0.25, \"D\": 0.25}, \"attn_gate\": true, \"qk_norm\": true}",
+  "llama_cfg": "{}",
+  "size": "{\"d\": 640, \"n_layers\": 14, \"slots\": 20, \"h\": 32}",
+  "tag": "f100_hybrid_gate_fix_lr1e3_s2",
+  "device": "auto",
+  "out": "/shared-docker/ExeaLM/results/funding"
+ },
+ "device": "cuda",
+ "rows": [
+  {
+   "model": "tonn_core",
+   "tag": "f100_hybrid_gate_fix_lr1e3_s2",
+   "cfg": "{\"attn_layers\": [1, 2, 4, 5, 7, 8, 10, 11, 13], \"init_weights\": {\"C\": 4, \"G\": 0.25, \"D\": 0.25}, \"attn_gate\": true, \"qk_norm\": true}",
+   "lr": 0.001,
+   "seed": 2,
+   "tokenizer": "bpe32k",
+   "vocab": 32768,
+   "params_M": 93.43,
+   "steps": 3000,
+   "seconds_budget": 0,
+   "tokens_seen": 49152000,
+   "bytes_seen": 202084646,
+   "secs": 2330.6,
+   "bits_per_byte": {
+    "en": 1.3514,
+    "ja_wiki": 1.4184,
+    "ja_web": 1.316,
+    "code": 1.5899
+   },
+   "architecture": [
+    {
+     "OS": 4,
+     "I": 2,
+     "MI": 2,
+     "C": 7,
+     "SM": 1,
+     "G": 1,
+     "EP": 1,
+     "GI": 1,
+     "MIM": 1
+    },
+    {
+     "MIM": 1,
+     "C": 5,
+     "RP": 2,
+     "MI": 6,
+     "SM": 1,
+     "I": 3,
+     "EP": 1,
+     "GI": 1
+    },
+    {
+     "C": 6,
+     "OS": 3,
+     "MI": 5,
+     "SM": 2,
+     "G": 1,
+     "I": 2,
+     "M": 1
+    },
+    {
+     "C": 3,
+     "I": 1,
+     "GI": 2,
+     "MI": 2,
+     "M": 3,
+     "EP": 2,
+     "SM": 3,
+     "MIM": 1,
+     "RP": 2,
+     "D": 1
+    },
+    {
+     "MI": 2,
+     "M": 1,
+     "GI": 2,
+     "C": 7,
+     "EP": 2,
+     "I": 2,
+     "RP": 2,
+     "OS": 1,
+     "SM": 1
+    }
+   ],
+   "train_loss_every_250": [
+    7.1029,
+    5.5558,
+    5.0339,
+    4.6701,
+    4.4402,
+    4.2528,
+    4.1329,
+    4.072,
+    3.9924,
+    3.9126,
+    3.8367,
+    3.6847
+   ]
+  }
+ ]
+}

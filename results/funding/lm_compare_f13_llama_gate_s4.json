@@ -1,0 +1,60 @@
+{
+ "args": {
+  "root": "data/tokpack",
+  "toks": "bpe32k",
+  "mix": "0.5,0.3,0.2",
+  "steps": 3000,
+  "seconds": 0,
+  "batch": 32,
+  "seq": 512,
+  "lr": 0.002,
+  "eval_batches": 16,
+  "models": "llama",
+  "seeds": "4",
+  "cfg": "{}",
+  "llama_cfg": "{\"attn_gate\": true, \"qk_norm\": true}",
+  "size": "{}",
+  "tag": "f13_llama_gate_s4",
+  "device": "auto",
+  "out": "results/funding"
+ },
+ "device": "cuda",
+ "rows": [
+  {
+   "model": "llama",
+   "tag": "f13_llama_gate_s4",
+   "cfg": "{}",
+   "lr": 0.002,
+   "seed": 4,
+   "tokenizer": "bpe32k",
+   "vocab": 32768,
+   "params_M": 13.49,
+   "steps": 3000,
+   "seconds_budget": 0,
+   "tokens_seen": 49152000,
+   "bytes_seen": 202084646,
+   "secs": 1013.7,
+   "bits_per_byte": {
+    "en": 1.4401,
+    "ja_wiki": 1.5122,
+    "ja_web": 1.3982,
+    "code": 1.7309
+   },
+   "architecture": null,
+   "train_loss_every_250": [
+    7.4862,
+    5.8455,
+    5.2826,
+    4.8761,
+    4.6448,
+    4.5282,
+    4.3839,
+    4.3378,
+    4.2609,
+    4.2502,
+    4.0898,
+    4.0068
+   ]
+  }
+ ]
+}
