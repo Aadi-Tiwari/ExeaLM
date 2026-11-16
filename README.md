@@ -248,7 +248,7 @@ Starting points. Almost everything here runs on a laptop or a free Google Colab 
 - [ ] Swarm sizes that vary within a run (2 to 8)
 - [x] A weight-alter circuit (`WA`, `exealm/model/alter.py`, opt-in): a slot that emits rank-1 changes to an MLP weight matrix of its own agent or of the other agents in its swarm, learned from the ordinary loss; the changes last for one pass ([docs/memory.md](docs/memory.md))
 - [ ] Weight changes that persist across passes (a store like the persistent board), and a safety review before any edit reaches stored parameters
-- [ ] How many facts can weight edits carry? The relay with 4, 8, 16, 32 and 64 facts, board against weight-alter (`experiments/swarm_relay.py --facts N --memory WA --wa_key hidden`; a 0.8M model, runs on a laptop CPU or Colab)
+- [ ] How many facts can weight edits carry? The relay with 4, 8, 16, 32 and 64 facts, board against weight-alter (`experiments/swarm_relay.py --facts N --memory WA --wa_key hidden`; a 0.8M model, runs on a laptop CPU or Colab) ([#58](https://github.com/exea-labs/ExeaLM/issues/58))
 - [ ] Weight-alter with 4 agents (three writers editing one reader) and with a later layer as the target (`wa_target`)
 - [ ] In the combined 0.1B model with `wa_key="hidden"` the relay went through weight edits alone and the board was unused (1 seed). Does that hold on more seeds, and does the board come back when the facts are longer than one chunk?
 - [ ] A relay built from real text (one agent reads a paragraph, another answers about it), to compare the board and weight-alter outside the toy task
@@ -295,7 +295,7 @@ Starting points. Almost everything here runs on a laptop or a free Google Colab 
 - [ ] (GPU) The same comparison at equal training time in bf16, where the hybrid is 1.6 times slower per step than Llama at 0.1B: does the 0.033 lead over the gated Llama survive?
 - [ ] (GPU) Longer runs: do the 0.1B leads hold at 10 times the tokens (about 500M)?
 - [ ] (GPU) Scale up: 0.5B, 1B and 3B with the same comparison, to see how the lead changes with size
-- [ ] Which other circuit types hurt or help in the starting menu? Leave one type out at a time at 13M, 3 seeds each (Colab-sized)
+- [ ] Which other circuit types hurt or help in the starting menu? Leave one type out at a time at 13M, 3 seeds each (Colab-sized) ([#59](https://github.com/exea-labs/ExeaLM/issues/59))
 - [x] Weight-alter passed about half of what the board passes on the relay (52% against 99.8%), because the model did not learn to tie values to keys. With the key taken from the edited layer (`wa_key="hidden"`) it passes 99.7 to 100% (6 runs)
 - [x] Weight-alter with `wa_key="hidden"` on real text and in the combined model: it costs 0.003 to 0.005 bits per byte at 13M (3 seeds); in the combined 0.1B model it carries the relay alone (100%, 1 seed)
 - [ ] The combined 0.1B recipe (text with relay and lookup batches) trained in 2 of 5 ExeaLM runs. The logs only held one line per 1,000 steps, so the cause is unknown. `experiments/full_small.py` now prints the loss of each kind of batch and the gradient norm every 100 steps (`--log_every`) and can grow the lookup datastore only once the current size is learned (`--grow_when`). Both are untested on real data: **(GPU)** rerun the five settings with them and find where the failed runs leave the good ones
