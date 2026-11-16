@@ -21,6 +21,8 @@ section 6. Commands: `experiments/tokenizer_lm.py` (the `args` field of each fil
 | ExeaLM hybrid with the leak fix (#47) | 13.36M | 8 | 1.437 | 1.507 | 1.393 | 1.725 | **1.516** | 1.511 | 1.501 to 1.544 | 1.517, 1.509, 1.501, 1.524, 1.544, 1.508, 1.512, 1.510 |
 | ExeaLM hybrid, circuit search on (leak fix on) | 13.36M | 2 | 1.443 | 1.520 | 1.395 | 1.812 | **1.542** | 1.542 | 1.520 to 1.565 | 1.520, 1.565 |
 | ExeaLM hybrid + one weight-alter slot per TONN layer | 13.42M | 2 | 1.439 | 1.510 | 1.394 | 1.735 | **1.520** | 1.520 | 1.519 to 1.520 | 1.520, 1.519 |
+| ExeaLM hybrid + one weight-alter slot per TONN layer, key from the edited layer (leak fix on) | 13.42M | 3 | 1.437 | 1.509 | 1.394 | 1.718 | **1.514** | 1.517 | 1.504 to 1.521 | 1.521, 1.517, 1.504 |
+| ExeaLM hybrid + one weight-alter slot, key from the edited layer, input matrix (leak fix on) | 13.47M | 3 | 1.436 | 1.506 | 1.393 | 1.712 | **1.512** | 1.511 | 1.505 to 1.519 | 1.519, 1.511, 1.505 |
 | Qwen3.5-style | 13.51M | 10 | 1.445 | 1.513 | 1.400 | 1.731 | **1.522** | 1.522 | 1.517 to 1.529 | 1.519, 1.521, 1.529, 1.517, 1.522, 1.520, 1.522, 1.524, 1.527, 1.522 |
 | Llama + gated attention + QK-norm | 13.49M | 10 | 1.440 | 1.514 | 1.400 | 1.733 | **1.522** | 1.521 | 1.515 to 1.528 | 1.525, 1.521, 1.528, 1.518, 1.520, 1.523, 1.515, 1.521, 1.521, 1.523 |
 | Llama | 13.1M | 5 | 1.466 | 1.538 | 1.418 | 1.776 | **1.550** | 1.548 | 1.544 to 1.559 | 1.544, 1.559, 1.551, 1.546, 1.548 |
@@ -61,14 +63,18 @@ The fix is merged. The "leak fix on" rows in this file were run with it.
 
 | Model | Parameters | Seeds | English | Japanese wiki | Japanese web | Code | Mean | Median | Min to max | Per seed |
 |---|---|---|---|---|---|---|---|---|---|---|
+| ExeaLM hybrid, no rotary attention in the starting menu (leak fix on) | 93.43M | 3 | 1.347 | 1.413 | 1.311 | 1.583 | **1.413** | 1.415 | 1.410 to 1.415 | 1.415, 1.415, 1.410 |
 | ExeaLM hybrid (leak fix on) | 93.43M | 3 | 1.353 | 1.423 | 1.319 | 1.611 | **1.427** | 1.419 | 1.419 to 1.441 | 1.441, 1.419, 1.419 |
 | Qwen3.5-style | 95.67M | 3 | 1.369 | 1.449 | 1.342 | 1.669 | **1.457** | 1.457 | 1.453 to 1.461 | 1.461, 1.453, 1.457 |
-| Llama + gated attention + QK-norm | 95.47M | 2 | 1.364 | 1.439 | 1.333 | 1.646 | **1.446** | 1.446 | 1.444 to 1.447 | 1.444, 1.447 |
+| Llama + gated attention + QK-norm | 95.47M | 3 | 1.364 | 1.440 | 1.333 | 1.646 | **1.446** | 1.447 | 1.444 to 1.447 | 1.444, 1.447, 1.447 |
 | Llama | 89.73M | 3 | 1.418 | 1.496 | 1.378 | 1.743 | **1.509** | 1.509 | 1.507 to 1.510 | 1.507, 1.510, 1.509 |
 
 - ExeaLM hybrid (leak fix on) against Qwen3.5-style: +0.031 bits per byte on average (positive: ExeaLM is better), better on 3 of 3 seeds (per seed +0.019, +0.034, +0.038)
-- ExeaLM hybrid (leak fix on) against Llama + gated attention + QK-norm: +0.015 bits per byte on average (positive: ExeaLM is better), better on 2 of 2 seeds (per seed +0.003, +0.027)
+- ExeaLM hybrid (leak fix on) against Llama + gated attention + QK-norm: +0.019 bits per byte on average (positive: ExeaLM is better), better on 3 of 3 seeds (per seed +0.003, +0.027, +0.028)
 - ExeaLM hybrid (leak fix on) against Llama: +0.082 bits per byte on average (positive: ExeaLM is better), better on 3 of 3 seeds (per seed +0.065, +0.091, +0.090)
+- ExeaLM hybrid, no rotary attention in the starting menu (leak fix on) against Qwen3.5-style: +0.044 bits per byte on average (positive: ExeaLM is better), better on 3 of 3 seeds (per seed +0.045, +0.039, +0.048)
+- ExeaLM hybrid, no rotary attention in the starting menu (leak fix on) against Llama + gated attention + QK-norm: +0.033 bits per byte on average (positive: ExeaLM is better), better on 3 of 3 seeds (per seed +0.029, +0.032, +0.037)
+- ExeaLM hybrid, no rotary attention in the starting menu (leak fix on) against Llama: +0.095 bits per byte on average (positive: ExeaLM is better), better on 3 of 3 seeds (per seed +0.091, +0.096, +0.099)
 
 - Equal steps, learning rate 1e-3 for every model. On this GPU in 32-bit precision ExeaLM takes about 1.2 times as
   long per step as Llama (1.6 times in bf16, section 6), so at equal training time the gap is smaller than at equal
@@ -118,33 +124,45 @@ connects them. Chance is 1.6%. 0.8M parameters, 3,000 steps.
 - With the key taken from the edited layer (`wa_key="hidden"`: the key of an edit is what the edited matrix itself
   receives at the picked positions of the writer's chunk, the key ROME uses), all six runs pass 99% at step 250 and
   end at 99.7 to 100%, 1.4 to 2.1% with the path cut. With eight facts: 100% (one seed).
-- On text, one self-editing weight-alter slot per TONN layer costs about 0.008 bits per byte at 13M (section 1,
-  2 seeds, original write rule).
+- On text, one self-editing weight-alter slot per TONN layer costs about 0.008 bits per byte at 13M with the
+  learned key (section 1, 2 seeds), 0.005 with the key from the edited layer and 0.003 with that key and edits to
+  the input matrix (3 seeds each, against the same seeds of the hybrid with the leak fix).
 
 ## 5. One 0.1B model with the board, the library and weight-alter (`experiments/full_small.py --preset 100m --wa 1`)
 
 The "together" recipe of `results/README.md` section 10 (relay and lookup taught with the text from the first step),
-with one weight-alter slot added to every TONN layer, and a same-size Llama on the same stream of batches. One seed,
-learning rate 2e-3 for both.
+with one weight-alter slot added to every TONN layer, and a same-size Llama on the same stream of batches. Rows without a step number are at step 3,000.
 
 | Model | Step | English | Mean of 4 sets | Relay (shared / cut) | Relay, board only | Relay, weight-alter only | Lookup (attached / removed) | Wikipedia gain from the library | Search hits |
 |---|---|---|---|---|---|---|---|---|---|
-| ExeaLM, all three circuits (94.7M) | 1,000 | 2.202 | 2.664 | 98.8% / 1.1% | 98.8% | 0.7% | 41.1% / 1.0% | 0.1395 | 26.1% |
-| ExeaLM, all three circuits (94.7M) | 2,000 | 1.932 | 2.406 | 99.1% / 0.8% | 99.1% | 0.7% | 70.5% / 1.7% | 0.016 | 25.8% |
-| ExeaLM, all three circuits (94.7M) | 3,000 | 1.706 | 2.063 | 99.4% / 0.8% | 99.4% | 0.7% | 77.6% / 1.6% | 0.0066 | 25.9% |
-| Llama (89.7M) | 1,000 | 2.440 | 2.914 | 1.3% / 1.3% |  |  | 1.2% |  |  |
-| Llama (89.7M) | 2,000 | 2.211 | 2.734 | 1.3% / 1.3% |  |  | 1.6% |  |  |
-| Llama (89.7M) | 3,000 | 2.046 | 2.501 | 1.4% / 1.4% |  |  | 1.5% |  |  |
+| ExeaLM, all three circuits (94.7M), seed 0, lr 2e-3 | 1,000 | 2.202 | 2.664 | 98.8% / 1.1% | 98.8% | 0.7% | 41.1% / 1.0% | 0.1395 | 26.1% |
+| ExeaLM, all three circuits (94.7M), seed 0, lr 2e-3 | 2,000 | 1.932 | 2.406 | 99.1% / 0.8% | 99.1% | 0.7% | 70.5% / 1.7% | 0.016 | 25.8% |
+| ExeaLM, all three circuits (94.7M), seed 0, lr 2e-3 | 3,000 | 1.706 | 2.063 | 99.4% / 0.8% | 99.4% | 0.7% | 77.6% / 1.6% | 0.0066 | 25.9% |
+| ExeaLM, weight-alter key from the edited layer, seed 0, lr 2e-3 | 3,000 | 1.726 | 2.092 | 100.0% / 0.1% | 0.0% | 100.0% | 75.0% / 1.5% | 0.0174 | 25.9% |
+| ExeaLM, all three circuits, seed 1, lr 2e-3 (did not train) | 3,000 | 4.106 | 4.846 | 1.3% / 1.3% | 1.3% | 1.3% | 0.0% / 0.0% | 0.2722 | 25.9% |
+| ExeaLM, all three circuits, seed 0, lr 1e-3 | 3,000 | 3.251 | 3.740 | 98.9% / 1.0% | 98.9% | 1.4% | 0.0% / 0.0% | -0.0717 | 25.9% |
+| ExeaLM, all three circuits, seed 1, lr 1e-3 | 3,000 | 3.484 | 3.952 | 6.7% / 1.4% | 1.4% | 6.5% | 0.0% / 0.0% | 0.163 | 25.9% |
+| Llama (89.7M), seed 0, lr 2e-3 | 1,000 | 2.440 | 2.914 | 1.3% / 1.3% |  |  | 1.2% |  |  |
+| Llama (89.7M), seed 0, lr 2e-3 | 2,000 | 2.211 | 2.734 | 1.3% / 1.3% |  |  | 1.6% |  |  |
+| Llama (89.7M), seed 0, lr 2e-3 | 3,000 | 2.046 | 2.501 | 1.4% / 1.4% |  |  | 1.5% |  |  |
+| Llama, seed 1, lr 2e-3 | 3,000 | 2.065 | 2.504 | 1.9% / 1.9% |  |  | 1.2% |  |  |
+| Llama, seed 0, lr 1e-3 | 3,000 | 2.013 | 2.453 | 1.8% / 1.8% |  |  | 1.5% |  |  |
+| Llama, seed 1, lr 1e-3 | 3,000 | 2.000 | 2.450 | 1.9% / 1.9% |  |  | 1.5% |  |  |
 
-- Both skills form: relay 99.4% (0.8% with the board cut), lookup 77.6% on 1,024 unseen facts (1.6% without the
-  library) and still rising. The Llama stays at chance on both.
-- The relay is carried by the board alone: switching the weight-alter slots off leaves it at 99.4%, switching the
-  board off leaves 0.7%.
-- On Wikipedia the library's gain shrinks from 0.14 to 0.007 bits per token as the model learns the text, and its
-  search finds the right article 26% of the time, as in earlier runs.
-- On ordinary text ExeaLM is far ahead of the Llama here (English 1.706 against 2.046). Do not rely on the size of
-  that gap: one seed, and one learning rate that earlier tests found too high for a Llama of this size (its best was
-  1e-3). Section 3 is the fair text comparison.
+- Seed 0 at 2e-3: both skills form. Relay 99.4% (0.8% with the board cut), lookup 77.6% on 1,024 unseen facts (1.6%
+  without the library). The relay is carried by the board alone: with the weight-alter slots off it stays at 99.4%,
+  with the board off it is 0.7%. On Wikipedia the library's gain shrinks from 0.14 to 0.007 bits per token as the
+  model learns the text, and its search finds the right article 26% of the time, as in earlier runs.
+- With the weight-alter key taken from the edited layer (seed 0, 2e-3) the relay is 100% and it is carried by the
+  weight changes alone: 100% with the board off, 0.0% with the weight-alter slots off. Lookup 75.0%, English 1.726
+  (1.706 with the learned key). So given both paths, the model uses weight edits and leaves the board unused.
+- **The recipe is not stable at this size.** Seed 1 at 2e-3 never trained (English 4.11 bits per byte, both tasks at
+  chance). At 1e-3, seed 0 learned the relay (98.9%) but not the lookup (0.0%) and its text is poor (English 3.25);
+  seed 1 learned neither (English 3.48). Two of five ExeaLM runs trained. A guess, not checked: the runs that never
+  learn the lookup keep getting lookup batches with a loss near 10, which swamp the text gradient.
+- The Llama's learning rate does not explain the text gap to the good ExeaLM runs: English 2.046 and 2.065 at 2e-3,
+  2.013 and 2.000 at 1e-3, against 1.706 and 1.726. The Llama stays at chance on both tasks in all four runs.
+  Section 3 is still the fair text comparison: no tasks, three seeds, every run trained.
 
 ## 6. Training speed on the MI300X (other jobs paused)
 
@@ -166,6 +184,7 @@ Effective TFLOP/s is 6 x parameters x tokens per second. No compiled or fused ke
 - Short runs: 49M tokens, far from convergence.
 - The Qwen3.5-style baseline is a small build of the layout, not the released models.
 - The memory circuits are shown on tasks built for them. None has lowered the loss on ordinary text.
-- The no-rotary-attention menu was chosen after the fact; it held on five new seeds at 13M and is untested at 0.1B.
-- The new weight-alter key has been run on the relay only, not in the combined model or on text.
+- The no-rotary-attention menu was chosen after the fact; it then held on five new seeds at 13M and on three at 0.1B.
+- The combined 0.1B recipe trained in two of five ExeaLM runs.
+- On text a self-editing weight-alter slot costs 0.003 to 0.005 bits per byte at 13M with the new key (3 seeds each).
 - Nothing above 0.1B.

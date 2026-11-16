@@ -1,0 +1,116 @@
+{
+ "args": {
+  "root": "/shared-docker/ExeaLM/data/tokpack",
+  "toks": "bpe32k",
+  "mix": "0.5,0.3,0.2",
+  "steps": 3000,
+  "seconds": 0,
+  "batch": 32,
+  "seq": 512,
+  "lr": 0.001,
+  "eval_batches": 16,
+  "models": "tonn_core",
+  "seeds": "1",
+  "cfg": "{\"attn_layers\": [1, 2, 4, 5, 7, 8, 10, 11, 13], \"init_weights\": {\"C\": 4, \"G\": 0.25, \"D\": 0.25, \"RP\": 0}, \"attn_gate\": true, \"qk_norm\": true}",
+  "llama_cfg": "{}",
+  "size": "{\"d\": 640, \"n_layers\": 14, \"slots\": 20, \"h\": 32}",
+  "tag": "f100_hybrid_gate_norp_fix_lr1e3_s1",
+  "device": "auto",
+  "out": "/shared-docker/ExeaLM/results/funding"
+ },
+ "device": "cuda",
+ "rows": [
+  {
+   "model": "tonn_core",
+   "tag": "f100_hybrid_gate_norp_fix_lr1e3_s1",
+   "cfg": "{\"attn_layers\": [1, 2, 4, 5, 7, 8, 10, 11, 13], \"init_weights\": {\"C\": 4, \"G\": 0.25, \"D\": 0.25, \"RP\": 0}, \"attn_gate\": true, \"qk_norm\": true}",
+   "lr": 0.001,
+   "seed": 1,
+   "tokenizer": "bpe32k",
+   "vocab": 32768,
+   "params_M": 93.43,
+   "steps": 3000,
+   "seconds_budget": 0,
+   "tokens_seen": 49152000,
+   "bytes_seen": 202084646,
+   "secs": 2484.7,
+   "bits_per_byte": {
+    "en": 1.3466,
+    "ja_wiki": 1.4101,
+    "ja_web": 1.31,
+    "code": 1.5922
+   },
+   "architecture": [
+    {
+     "GI": 3,
+     "C": 6,
+     "EP": 1,
+     "MI": 2,
+     "SM": 2,
+     "I": 1,
+     "OS": 3,
+     "M": 1,
+     "G": 1
+    },
+    {
+     "M": 1,
+     "C": 5,
+     "I": 1,
+     "MIM": 3,
+     "EP": 4,
+     "OS": 2,
+     "G": 1,
+     "SM": 2,
+     "D": 1
+    },
+    {
+     "I": 3,
+     "D": 1,
+     "MI": 1,
+     "MIM": 3,
+     "GI": 1,
+     "C": 5,
+     "EP": 2,
+     "M": 3,
+     "OS": 1
+    },
+    {
+     "SM": 3,
+     "C": 7,
+     "GI": 3,
+     "MIM": 1,
+     "M": 1,
+     "OS": 1,
+     "G": 1,
+     "D": 1,
+     "MI": 1,
+     "I": 1
+    },
+    {
+     "MI": 4,
+     "MIM": 4,
+     "GI": 2,
+     "I": 1,
+     "C": 5,
+     "SM": 1,
+     "EP": 2,
+     "M": 1
+    }
+   ],
+   "train_loss_every_250": [
+    7.131,
+    5.5918,
+    4.963,
+    4.5407,
+    4.3452,
+    4.1977,
+    4.094,
+    4.0227,
+    3.9449,
+    3.9181,
+    3.7863,
+    3.6665
+   ]
+  }
+ ]
+}

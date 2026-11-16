@@ -75,26 +75,31 @@ connects them. Chance is 1.6%. 0.8M parameters, 3,000 steps.
 - With the key taken from the edited layer (`wa_key="hidden"`: the key of an edit is what the edited matrix itself
   receives at the picked positions of the writer's chunk, the key ROME uses), all six runs pass 99% at step 250 and
   end at 99.7 to 100%, 1.4 to 2.1% with the path cut. With eight facts: 100% (one seed).
-- On text, one self-editing weight-alter slot per TONN layer costs about 0.008 bits per byte at 13M (section 1,
-  2 seeds, original write rule).
+- On text, one self-editing weight-alter slot per TONN layer costs about 0.008 bits per byte at 13M with the
+  learned key (section 1, 2 seeds), 0.005 with the key from the edited layer and 0.003 with that key and edits to
+  the input matrix (3 seeds each, against the same seeds of the hybrid with the leak fix).
 
 ## 5. One 0.1B model with the board, the library and weight-alter (`experiments/full_small.py --preset 100m --wa 1`)
 
 The "together" recipe of `results/README.md` section 10 (relay and lookup taught with the text from the first step),
-with one weight-alter slot added to every TONN layer, and a same-size Llama on the same stream of batches. One seed,
-learning rate 2e-3 for both.
+with one weight-alter slot added to every TONN layer, and a same-size Llama on the same stream of batches. Rows without a step number are at step 3,000.
 
 {{COMBINED}}
 
-- Both skills form: relay 99.4% (0.8% with the board cut), lookup 77.6% on 1,024 unseen facts (1.6% without the
-  library) and still rising. The Llama stays at chance on both.
-- The relay is carried by the board alone: switching the weight-alter slots off leaves it at 99.4%, switching the
-  board off leaves 0.7%.
-- On Wikipedia the library's gain shrinks from 0.14 to 0.007 bits per token as the model learns the text, and its
-  search finds the right article 26% of the time, as in earlier runs.
-- On ordinary text ExeaLM is far ahead of the Llama here (English 1.706 against 2.046). Do not rely on the size of
-  that gap: one seed, and one learning rate that earlier tests found too high for a Llama of this size (its best was
-  1e-3). Section 3 is the fair text comparison.
+- Seed 0 at 2e-3: both skills form. Relay 99.4% (0.8% with the board cut), lookup 77.6% on 1,024 unseen facts (1.6%
+  without the library). The relay is carried by the board alone: with the weight-alter slots off it stays at 99.4%,
+  with the board off it is 0.7%. On Wikipedia the library's gain shrinks from 0.14 to 0.007 bits per token as the
+  model learns the text, and its search finds the right article 26% of the time, as in earlier runs.
+- With the weight-alter key taken from the edited layer (seed 0, 2e-3) the relay is 100% and it is carried by the
+  weight changes alone: 100% with the board off, 0.0% with the weight-alter slots off. Lookup 75.0%, English 1.726
+  (1.706 with the learned key). So given both paths, the model uses weight edits and leaves the board unused.
+- **The recipe is not stable at this size.** Seed 1 at 2e-3 never trained (English 4.11 bits per byte, both tasks at
+  chance). At 1e-3, seed 0 learned the relay (98.9%) but not the lookup (0.0%) and its text is poor (English 3.25);
+  seed 1 learned neither (English 3.48). Two of five ExeaLM runs trained. A guess, not checked: the runs that never
+  learn the lookup keep getting lookup batches with a loss near 10, which swamp the text gradient.
+- The Llama's learning rate does not explain the text gap to the good ExeaLM runs: English 2.046 and 2.065 at 2e-3,
+  2.013 and 2.000 at 1e-3, against 1.706 and 1.726. The Llama stays at chance on both tasks in all four runs.
+  Section 3 is still the fair text comparison: no tasks, three seeds, every run trained.
 
 ## 6. Training speed on the MI300X (other jobs paused)
 
@@ -107,6 +112,7 @@ Effective TFLOP/s is 6 x parameters x tokens per second. No compiled or fused ke
 - Short runs: 49M tokens, far from convergence.
 - The Qwen3.5-style baseline is a small build of the layout, not the released models.
 - The memory circuits are shown on tasks built for them. None has lowered the loss on ordinary text.
-- The no-rotary-attention menu was chosen after the fact; it held on five new seeds at 13M and is untested at 0.1B.
-- The new weight-alter key has been run on the relay only, not in the combined model or on text.
+- The no-rotary-attention menu was chosen after the fact; it then held on five new seeds at 13M and on three at 0.1B.
+- The combined 0.1B recipe trained in two of five ExeaLM runs.
+- On text a self-editing weight-alter slot costs 0.003 to 0.005 bits per byte at 13M with the new key (3 seeds each).
 - Nothing above 0.1B.

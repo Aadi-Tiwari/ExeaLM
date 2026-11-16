@@ -1,0 +1,78 @@
+{
+ "args": {
+  "root": "data/tokpack",
+  "toks": "bpe32k",
+  "mix": "0.5,0.3,0.2",
+  "steps": 3000,
+  "seconds": 0,
+  "batch": 32,
+  "seq": 512,
+  "lr": 0.002,
+  "eval_batches": 16,
+  "models": "tonn_core",
+  "seeds": "2",
+  "cfg": "{\"attn_layers\": [1, 2, 4, 5], \"init_weights\": {\"C\": 4, \"G\": 0.25, \"D\": 0.25}, \"attn_gate\": true, \"qk_norm\": true, \"pinned\": {\"WA\": 1}, \"menu\": [\"D\", \"I\", \"GI\", \"M\", \"MI\", \"MIM\", \"EP\", \"G\", \"C\", \"RP\", \"SM\", \"OS\", \"WA\"], \"wa_scope\": \"self\", \"wa_key\": \"hidden\", \"wa_matrix\": \"out\"}",
+  "llama_cfg": "{}",
+  "size": "{}",
+  "tag": "f13_hybrid_gate_wahkey_fix_s2",
+  "device": "auto",
+  "out": "results/funding"
+ },
+ "device": "cuda",
+ "rows": [
+  {
+   "model": "tonn_core",
+   "tag": "f13_hybrid_gate_wahkey_fix_s2",
+   "cfg": "{\"attn_layers\": [1, 2, 4, 5], \"init_weights\": {\"C\": 4, \"G\": 0.25, \"D\": 0.25}, \"attn_gate\": true, \"qk_norm\": true, \"pinned\": {\"WA\": 1}, \"menu\": [\"D\", \"I\", \"GI\", \"M\", \"MI\", \"MIM\", \"EP\", \"G\", \"C\", \"RP\", \"SM\", \"OS\", \"WA\"], \"wa_scope\": \"self\", \"wa_key\": \"hidden\", \"wa_matrix\": \"out\"}",
+   "lr": 0.002,
+   "seed": 2,
+   "tokenizer": "bpe32k",
+   "vocab": 32768,
+   "params_M": 13.42,
+   "steps": 3000,
+   "seconds_budget": 0,
+   "tokens_seen": 49152000,
+   "bytes_seen": 202084646,
+   "secs": 1481.1,
+   "bits_per_byte": {
+    "en": 1.4322,
+    "ja_wiki": 1.5034,
+    "ja_web": 1.3905,
+    "code": 1.6919
+   },
+   "architecture": [
+    {
+     "WA": 1,
+     "OS": 1,
+     "I": 1,
+     "MI": 1,
+     "C": 3,
+     "SM": 1
+    },
+    {
+     "WA": 1,
+     "G": 1,
+     "EP": 1,
+     "C": 1,
+     "I": 1,
+     "GI": 1,
+     "OS": 2
+    }
+   ],
+   "train_loss_every_250": [
+    7.3697,
+    5.711,
+    5.1972,
+    4.7808,
+    4.5796,
+    4.4233,
+    4.33,
+    4.2953,
+    4.2353,
+    4.1678,
+    4.1091,
+    3.9689
+   ]
+  }
+ ]
+}

@@ -1,0 +1,291 @@
+{
+ "model": "exealm",
+ "params": 94717442,
+ "library_chunks": 483270,
+ "eval_library_chunks": 53467,
+ "train_articles": 14209,
+ "eval_articles": 1578,
+ "args": {
+  "model": "exealm",
+  "preset": "100m",
+  "search": 0,
+  "search_every": 250,
+  "search_until": 0.5,
+  "search_mix": "text:3,wiki:1,relay:1,lookup:1",
+  "wiki_oracle": 0.0,
+  "init_ckpt": "",
+  "rag_null": 0,
+  "attn_gate": -1,
+  "qk_norm": -1,
+  "memory_slots": 0,
+  "lib_search": "learned",
+  "root": "data/tokpack",
+  "toks": "bpe32k",
+  "train": "train_en_big,train_ja_big,train_code_big",
+  "mix": "0.5,0.3,0.2",
+  "p_kinds": "0.7,0.15,0.075,0.075",
+  "warm_steps": 0,
+  "warm_kinds": "0.2,0,0.4,0.4",
+  "schedule": "400:0,0,0.5,0.5;2000:0.3,0.2,0.25,0.25",
+  "facts": 1024,
+  "grow": 16,
+  "dense": 1,
+  "relay_chunk": 8,
+  "relay_facts": 4,
+  "grow_every": 150,
+  "d": 320,
+  "slots": 10,
+  "steps": 24000,
+  "batch": 32,
+  "seq": 512,
+  "chunk": 64,
+  "min_tokens": 1024,
+  "lr": 0.002,
+  "warmup": 500,
+  "refresh_every": 1000,
+  "eval_every": 1000,
+  "eval_batches": 12,
+  "save_every": 4000,
+  "key_dim": 128,
+  "lexical": 128,
+  "gen_tokens": 60,
+  "prompts": "The history of the city begins||Photosynthesis is the process by which||日本の首都は||def fibonacci(n):",
+  "tokenizer": "results/tokenizer/bpe32k/tokenizer.json",
+  "lib_on": "wiki",
+  "board_chunk": 8,
+  "pool": "mean",
+  "wa": 1,
+  "wa_scope": "all",
+  "wa_key": "hidden",
+  "tag": "all3_hkey",
+  "stop_at": 3000,
+  "seed": 0,
+  "smoke": 0,
+  "device": "auto",
+  "out": "results/combined"
+ },
+ "curve": [
+  {
+   "step": 1000,
+   "secs": 658.1,
+   "tokens": 16384000,
+   "train_loss": 0.002,
+   "batches": {
+    "text": 187,
+    "wiki": 111,
+    "relay": 355,
+    "lookup": 347,
+    "pair": 0
+   },
+   "val_en": {
+    "removed": 2.2583,
+    "attached": 2.269
+   },
+   "val_ja_wiki": {
+    "removed": 2.6321,
+    "attached": 2.6556
+   },
+   "val_ja_web": {
+    "removed": 2.1461,
+    "attached": 2.1636
+   },
+   "val_code": {
+    "removed": 4.0301,
+    "attached": 4.0661
+   },
+   "swarm": {
+    "shared": 2.2193,
+    "cut": 2.2501,
+    "board_gain": 0.0307
+   },
+   "knowledge": {
+    "removed": 9.0647,
+    "attached": 9.0395,
+    "retrieval_gain": 0.0253,
+    "same_article_hits": 0.2601
+   },
+   "relay": {
+    "shared": 0.9993,
+    "cut": 0.0003,
+    "board_only": 0.0007,
+    "weight_alter_only": 0.9993
+   },
+   "lookup": {
+    "attached": 0.4088,
+    "removed": 0.0147
+   }
+  },
+  {
+   "step": 2000,
+   "secs": 1473.6,
+   "tokens": 32768000,
+   "train_loss": 5.3214,
+   "batches": {
+    "text": 496,
+    "wiki": 306,
+    "relay": 592,
+    "lookup": 606,
+    "pair": 0
+   },
+   "val_en": {
+    "removed": 1.9609,
+    "attached": 1.9732
+   },
+   "val_ja_wiki": {
+    "removed": 2.3152,
+    "attached": 2.3068
+   },
+   "val_ja_web": {
+    "removed": 1.9357,
+    "attached": 1.9346
+   },
+   "val_code": {
+    "removed": 3.6586,
+    "attached": 3.6719
+   },
+   "swarm": {
+    "shared": 1.9531,
+    "cut": 1.9556,
+    "board_gain": 0.0025
+   },
+   "knowledge": {
+    "removed": 7.3829,
+    "attached": 7.334,
+    "retrieval_gain": 0.0489,
+    "same_article_hits": 0.2477
+   },
+   "relay": {
+    "shared": 1.0,
+    "cut": 0.0,
+    "board_only": 0.0,
+    "weight_alter_only": 1.0
+   },
+   "lookup": {
+    "attached": 0.7427,
+    "removed": 0.0161
+   }
+  },
+  {
+   "step": 3000,
+   "secs": 2309.5,
+   "tokens": 49152000,
+   "train_loss": 5.4875,
+   "batches": {
+    "text": 1201,
+    "wiki": 457,
+    "relay": 663,
+    "lookup": 679,
+    "pair": 0
+   },
+   "val_en": {
+    "removed": 1.7261,
+    "attached": 1.7374
+   },
+   "val_ja_wiki": {
+    "removed": 1.97,
+    "attached": 1.9813
+   },
+   "val_ja_web": {
+    "removed": 1.6941,
+    "attached": 1.7036
+   },
+   "val_code": {
+    "removed": 2.976,
+    "attached": 3.0077
+   },
+   "swarm": {
+    "shared": 1.7231,
+    "cut": 1.7243,
+    "board_gain": 0.0012
+   },
+   "knowledge": {
+    "removed": 6.6169,
+    "attached": 6.5995,
+    "retrieval_gain": 0.0174,
+    "same_article_hits": 0.2591
+   },
+   "relay": {
+    "shared": 1.0,
+    "cut": 0.0007,
+    "board_only": 0.0,
+    "weight_alter_only": 1.0
+   },
+   "lookup": {
+    "attached": 0.7496,
+    "removed": 0.0151
+   }
+  }
+ ],
+ "searches": [],
+ "samples": {},
+ "architecture": [
+  {
+   "RG": 1,
+   "AG": 1,
+   "WA": 1,
+   "RP": 2,
+   "MI": 3,
+   "EP": 2,
+   "MIM": 1,
+   "OS": 2,
+   "SM": 2,
+   "G": 1,
+   "GI": 1,
+   "C": 2,
+   "M": 1
+  },
+  {
+   "RG": 1,
+   "AG": 1,
+   "WA": 1,
+   "M": 2,
+   "I": 1,
+   "GI": 1,
+   "C": 4,
+   "RP": 2,
+   "OS": 1,
+   "EP": 1,
+   "MIM": 1,
+   "G": 1,
+   "SM": 3
+  },
+  {
+   "RG": 1,
+   "AG": 1,
+   "WA": 1,
+   "C": 5,
+   "I": 4,
+   "RP": 2,
+   "MIM": 1,
+   "EP": 2,
+   "OS": 2,
+   "G": 1
+  },
+  {
+   "RG": 1,
+   "AG": 1,
+   "WA": 1,
+   "M": 1,
+   "MIM": 2,
+   "C": 6,
+   "MI": 1,
+   "RP": 2,
+   "D": 1,
+   "SM": 1,
+   "GI": 2,
+   "EP": 1
+  },
+  {
+   "RG": 1,
+   "AG": 1,
+   "WA": 1,
+   "C": 7,
+   "RP": 3,
+   "GI": 2,
+   "MIM": 1,
+   "I": 1,
+   "SM": 2,
+   "MI": 1
+  }
+ ]
+}
