@@ -1,0 +1,192 @@
+{
+ "model": "llama",
+ "params": 89731200,
+ "library_chunks": 483270,
+ "eval_library_chunks": 53467,
+ "train_articles": 14209,
+ "eval_articles": 1578,
+ "args": {
+  "model": "llama",
+  "preset": "100m",
+  "search": 0,
+  "search_every": 250,
+  "search_until": 0.5,
+  "search_mix": "text:3,wiki:1,relay:1,lookup:1",
+  "wiki_oracle": 0.0,
+  "init_ckpt": "",
+  "rag_null": 0,
+  "attn_gate": -1,
+  "qk_norm": -1,
+  "memory_slots": 0,
+  "lib_search": "learned",
+  "root": "data/tokpack",
+  "toks": "bpe32k",
+  "train": "train_en_big,train_ja_big,train_code_big",
+  "mix": "0.5,0.3,0.2",
+  "p_kinds": "0.7,0.15,0.075,0.075",
+  "warm_steps": 0,
+  "warm_kinds": "0.2,0,0.4,0.4",
+  "schedule": "400:0,0,0.5,0.5;2000:0.3,0.2,0.25,0.25",
+  "facts": 1024,
+  "grow": 16,
+  "dense": 1,
+  "relay_chunk": 8,
+  "relay_facts": 4,
+  "grow_every": 150,
+  "d": 320,
+  "slots": 10,
+  "steps": 24000,
+  "batch": 32,
+  "seq": 512,
+  "chunk": 64,
+  "min_tokens": 1024,
+  "lr": 0.001,
+  "warmup": 500,
+  "refresh_every": 1000,
+  "eval_every": 1000,
+  "eval_batches": 12,
+  "save_every": 4000,
+  "key_dim": 128,
+  "lexical": 128,
+  "gen_tokens": 60,
+  "prompts": "The history of the city begins||Photosynthesis is the process by which||日本の首都は||def fibonacci(n):",
+  "tokenizer": "results/tokenizer/bpe32k/tokenizer.json",
+  "lib_on": "wiki",
+  "board_chunk": 8,
+  "pool": "mean",
+  "wa": 0,
+  "wa_scope": "all",
+  "wa_key": "learned",
+  "tag": "base_lr1e3_s1",
+  "stop_at": 3000,
+  "seed": 1,
+  "smoke": 0,
+  "device": "auto",
+  "out": "results/combined"
+ },
+ "curve": [
+  {
+   "step": 1000,
+   "secs": 216.8,
+   "tokens": 16384000,
+   "train_loss": 7.215,
+   "batches": {
+    "text": 186,
+    "wiki": 116,
+    "relay": 336,
+    "lookup": 362,
+    "pair": 0
+   },
+   "val_en": {
+    "removed": 2.4537
+   },
+   "val_ja_wiki": {
+    "removed": 2.7354
+   },
+   "val_ja_web": {
+    "removed": 2.2271
+   },
+   "val_code": {
+    "removed": 4.3186
+   },
+   "swarm": {
+    "shared": 2.4463,
+    "cut": 2.4463,
+    "board_gain": 0.0
+   },
+   "knowledge": {
+    "removed": 10.3739
+   },
+   "relay": {
+    "shared": 0.0166,
+    "cut": 0.0166
+   },
+   "lookup": {
+    "removed": 0.0146
+   }
+  },
+  {
+   "step": 2000,
+   "secs": 441.1,
+   "tokens": 32768000,
+   "train_loss": 6.8362,
+   "batches": {
+    "text": 490,
+    "wiki": 314,
+    "relay": 582,
+    "lookup": 614,
+    "pair": 0
+   },
+   "val_en": {
+    "removed": 2.221
+   },
+   "val_ja_wiki": {
+    "removed": 2.6011
+   },
+   "val_ja_web": {
+    "removed": 2.1319
+   },
+   "val_code": {
+    "removed": 4.038
+   },
+   "swarm": {
+    "shared": 2.2138,
+    "cut": 2.2138,
+    "board_gain": 0.0
+   },
+   "knowledge": {
+    "removed": 8.5707
+   },
+   "relay": {
+    "shared": 0.015,
+    "cut": 0.015
+   },
+   "lookup": {
+    "removed": 0.0194
+   }
+  },
+  {
+   "step": 3000,
+   "secs": 675.0,
+   "tokens": 49152000,
+   "train_loss": 4.2632,
+   "batches": {
+    "text": 1215,
+    "wiki": 441,
+    "relay": 650,
+    "lookup": 694,
+    "pair": 0
+   },
+   "val_en": {
+    "removed": 1.9996
+   },
+   "val_ja_wiki": {
+    "removed": 2.2674
+   },
+   "val_ja_web": {
+    "removed": 1.9033
+   },
+   "val_code": {
+    "removed": 3.6277
+   },
+   "swarm": {
+    "shared": 1.9927,
+    "cut": 1.9927,
+    "board_gain": 0.0
+   },
+   "knowledge": {
+    "removed": 7.8778
+   },
+   "relay": {
+    "shared": 0.0186,
+    "cut": 0.0186
+   },
+   "lookup": {
+    "removed": 0.0154
+   }
+  }
+ ],
+ "searches": [],
+ "samples": {},
+ "architecture": null
+}

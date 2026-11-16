@@ -261,9 +261,10 @@ Starting points. Almost everything here runs on a laptop or a free Google Colab 
 - [ ] The full 17M model against a gated Llama on the same batches (the fair baseline now that ExeaLM is gated)
 - [ ] Gated DeltaNet as a TONN circuit type the search can choose ([#30](https://github.com/exea-labs/ExeaLM/issues/30)); other new types, for example sliding-window attention
 - [x] A circuit that has not been measured yet was scaled by the batch it was reading, so its output depended on later tokens and on other rows until its first training step. Fixed in [#47](https://github.com/exea-labs/ExeaLM/pull/47) (a constant scale until the first measurement). On real text at 13M the fix changes the score by 0.0001 bits per byte (3 seeds, [results/funding](results/funding/README.md))
-- [ ] The 13M hybrid without rotary attention in the starting menu scored 1.511 on average over 10 seeds (Qwen3.5-style 1.522, gated Llama 1.522), 5 of them run after the menu was chosen. Confirm it at 0.1B, then make it the default
+- [ ] Make the starting menu without rotary attention the default for the hybrid. It scored 1.511 over 10 seeds at 13M (Qwen3.5-style 1.522, gated Llama 1.522) and 1.413 over 3 seeds at 0.1B (original menu 1.427, gated Llama 1.446, Qwen3.5-style 1.457)
 - [x] Weight-alter passed about half of what the board passes on the relay (52% against 99.8%), because the model did not learn to tie values to keys. With the key taken from the edited layer (`wa_key="hidden"`) it passes 99.7 to 100% (6 runs)
-- [ ] Weight-alter with `wa_key="hidden"` in the combined model and on real text: does it help or cost loss?
+- [x] Weight-alter with `wa_key="hidden"` on real text and in the combined model: it costs 0.003 to 0.005 bits per byte at 13M (3 seeds); in the combined 0.1B model it carries the relay alone (100%, 1 seed)
+- [ ] The combined 0.1B recipe (text with relay and lookup batches) trained in 2 of 5 ExeaLM runs. Find out why the lookup fails to start in the others, and fix it
 - [ ] Shape sweep at fixed parameters: depth, width, slots per layer, channels per slot
 - [ ] Search schedule: how long to search, how much to replace, how long new circuits are protected (on the hybrid with a good start it adds about 0.001 today)
 - [ ] Which circuit types survive the search, and does that change from `tiny` to `small`?
