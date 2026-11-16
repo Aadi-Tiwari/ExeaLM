@@ -41,8 +41,9 @@ What's missing:
    the loader and the loop are written (`python -m exealm.train.sft`). Every conversation gets its own row, padded on
    the right, and conversations of similar length share a batch. The data sources are not downloaded or formatted yet.
 2. **DPO** (`exealm/train/dpo.py`): preferred versus rejected answers. The loop is written (`python -m exealm.train.dpo`, tested on `tiny`); the preference data is not chosen yet.
-3. **GRPO** (`exealm/train/grpo.py`): RL with verifiable rewards (math answers, code tests, format). The loss and group
-   advantages are written and tested; the sampling loop and rewards are not.
+3. **GRPO** (`exealm/train/grpo.py`): RL with verifiable rewards (math answers, code tests, format). The loop is written
+   (`python -m exealm.train.grpo`, tested on `tiny`) with math, exact-match and code rewards; the code reward runs
+   model-written code and is refused without `--allow_code_exec`.
 4. **Swarm SFT and swarm RL:** swarms that share a board and solve tasks together ([swarms.md](swarms.md)). Not started,
    and the part most unique to ExeaLM.
 
