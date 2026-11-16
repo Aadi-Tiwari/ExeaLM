@@ -4,7 +4,7 @@ import torch
 
 from exealm import ExeaLM, MemoryContext, get_config
 from exealm.config import MENU
-from exealm.model.alter import apply_edits, weight_delta
+from exealm.model.alter import apply_edits, exact_writes, weight_delta
 
 
 def model(scope="all", swarm=2, target=-1, seed=0):
@@ -115,3 +115,19 @@ def test_a_later_layer_can_be_the_target_and_an_earlier_one_cannot():
     bad = ExeaLM(get_config("tiny", pinned={"WA": 1}, wa_target=0, swarm_size=2))
     with pytest.raises(ValueError, match="before the emitting layer"):
         bad(torch.randint(0, 256, (2, 32)), MemoryContext(swarm_size=2))
+
+
+def test_every_stored_key_returns_its_own_value_after_later_writes():
+    torch.manual_seed(0)
+    u = torch.randn(3, 6, 2, 16)
+    v = torch.nn.functional.normalize(torch.randn(3, 6, 2, 24) + 2.0, dim=-1)      # correlated keys: heavy crosstalk
+    cu, cv = exact_writes(u, v)
+    for upto in (1, 3, 6):
+        delta = torch.einsum("begd,begf->bgdf", cu[:, :upto], cv[:, :upto])        # the matrix change so far
+        back = torch.einsum("bgdf,begf->begd", delta, v[:, :upto])
+        assert torch.allclose(back, u[:, :upto], atol=1e-4)
+    naive = torch.einsum("begd,begf->bgdf", u, v)
+    assert not torch.allclose(torch.einsum("bgdf,begf->begd", naive, v), u, atol=0.5)   # plain sums do not
+    same = torch.cat([v[:, :1], v[:, :1]], 1)                                      # a repeated key stays bounded
+    cu2, _ = exact_writes(u[:, :2], same)
+    assert torch.isfinite(cu2).all() and float(cu2.abs().max()) < 1e3

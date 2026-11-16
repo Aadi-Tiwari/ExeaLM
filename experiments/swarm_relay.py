@@ -84,7 +84,7 @@ def run(arm, a, dev):
     extra = {}
     if a.memory == "WA":           # no board: facts can only travel as changes to the asker's weights (exealm/model/alter.py)
         extra = dict(pinned={"WA": a.wa_slots}, menu=tuple(t for t in MENU if t not in ("RG", "AG")) + ("WA",),
-                     wa_scope=a.wa_scope)
+                     wa_scope=a.wa_scope, wa_matrix=a.wa_matrix)
     elif a.memory == "none":       # neither: the control for both
         extra = dict(pinned={}, menu=tuple(t for t in MENU if t not in ("RG", "AG")))
     cfg = get_config("tiny", vocab_size=256, chunk_pool=a.pool, board_chunk=a.board_chunk, d=a.d, n_layers=a.layers, slots=a.slots, h=a.h, chunk=a.chunk,
@@ -137,6 +137,7 @@ def main():
                     help="how facts can travel: the agent board (AG), weight changes (WA, no board), or neither")
     ap.add_argument("--wa_slots", type=int, default=1, help="weight-alter slots per layer (with --memory WA)")
     ap.add_argument("--wa_scope", default="others", choices=["self", "others", "all"])
+    ap.add_argument("--wa_matrix", default="out", choices=["out", "in"])
     ap.add_argument("--device", default="auto")
     ap.add_argument("--out", default="results/swarm_relay")
     a = ap.parse_args()
@@ -147,6 +148,7 @@ def main():
     tag = "" if (a.agents, a.facts) == (2, 4) else f"_a{a.agents}_f{a.facts}"
     if a.memory != "AG":
         tag += f"_{a.memory.lower()}" + (f"{a.wa_slots}" if a.memory == "WA" and a.wa_slots != 1 else "")
+        tag += "_in" if a.memory == "WA" and a.wa_matrix == "in" else ""
     path = os.path.join(a.out, f"relay{tag}_seed{a.seed}.json")
     json.dump(out, open(path, "w"), indent=1)
     print("WROTE", path)

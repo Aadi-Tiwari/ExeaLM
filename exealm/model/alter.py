@@ -5,9 +5,13 @@ Once per chunk of `cfg.board_chunk` tokens (default: `cfg.chunk`), every WA slot
 weight matrix, the output matrix W_o of a gated MLP (hidden width f -> stream width d):
 
     delta W  =  strength * u v^T
-    u (d)      = U . chunk average of stream A          what to write (the output side)
-    v (f)      = unit( V . chunk average of stream B )  which inputs it applies to (the input side)
+    u (d)      = U . chunk summary of stream A          what to write (the output side)
+    v (f)      = unit( V . chunk summary of stream B )  which inputs it applies to (the input side)
+    (each summary is a learned weighting of the chunk's positions that starts as the plain average)
     strength   = gain * sigmoid(w . chunk average of stream C + b)      the slot can stay quiet
+
+A slot's writes are corrected so they do not disturb each other: after any number of writes, the changed matrix
+returns exactly u at key v for every write so far (exact_writes below).
 
 The change takes effect from the next chunk on (never inside the chunk that produced it, so nothing sees the future)
 and lasts for the rest of the pass: at a later position the target computes (W_o + sum of the changes so far) . hidden.
@@ -41,11 +45,21 @@ class WeightAlter(nn.Module):
         if not cfg.ffn_width:
             raise ValueError("the weight-alter circuit edits an MLP: the model needs one (ffn != 0)")
         self.chunk, self.scope, self.target = cfg.board_chunk or cfg.chunk, cfg.wa_scope, cfg.wa_target
-        self.to_u = nn.Linear(cfg.h, cfg.d, bias=False)
-        self.to_v = nn.Linear(cfg.h, cfg.ffn_width, bias=False)
+        if cfg.wa_matrix not in ("out", "in"):
+            raise ValueError("wa_matrix must be 'out' or 'in'")
+        self.matrix = cfg.wa_matrix
+        # "out": the MLP's output matrix W_o (hidden f -> stream d). "in": its input matrix W_i (stream d -> 2f), so
+        # the change passes through the MLP's gate: a key that matches twice as well opens it more than twice as far
+        rows, cols = (cfg.d, cfg.ffn_width) if self.matrix == "out" else (2 * cfg.ffn_width, cfg.d)
+        self.to_u = nn.Linear(cfg.h, rows, bias=False)
+        self.to_v = nn.Linear(cfg.h, cols, bias=False)
         self.gate_w = nn.Parameter(torch.zeros(cfg.h))
         self.gate_b = nn.Parameter(torch.zeros(()))
         self.log_gain = nn.Parameter(torch.zeros(()))
+        # which positions of the chunk the value (u) and the key (v) are read from: a learned softmax over the chunk,
+        # scored from stream C. Zero start = the plain average.
+        self.pick_u = nn.Parameter(torch.zeros(cfg.h))
+        self.pick_v = nn.Parameter(torch.zeros(cfg.h))
         nn.init.normal_(self.to_u.weight, std=0.02)                       # start close to "change nothing"
 
     def forward(self, S, mem, layer, slots):
@@ -56,18 +70,49 @@ class WeightAlter(nn.Module):
         sw = mem.swarm_size if mem is not None else 1
         if sw < 1 or B % sw:
             sw = 1
-        pool = lambda x: F.pad(x, (0, 0, 0, 0, 0, n * C - T)).view(B, n, C, g, h).float().mean(2)   # (B, n, g, h)
+        chunks = lambda x: F.pad(x, (0, 0, 0, 0, 0, n * C - T)).view(B, n, C, g, h).float()
+        pool = lambda x: chunks(x).mean(2)                                                        # (B, n, g, h)
+        pad = (torch.arange(n * C, device=A.device) >= T).view(1, n, C, 1)
+
+        def picked(x, w):                                  # a learned weighting of the chunk's positions
+            a = (chunks(G) @ w.float()).masked_fill(pad, float("-inf")).softmax(2).unsqueeze(-1)
+            return (a * chunks(x)).sum(2)
         on = layer.mask[torch.as_tensor(slots, device=A.device)].float()                         # 0: switched off
         strength = self.log_gain.exp() * torch.sigmoid(pool(G) @ self.gate_w.float() + self.gate_b.float()) * on
-        u = self.to_u(pool(A)) * strength.unsqueeze(-1)                   # (B, n, g, d)
-        v = F.normalize(self.to_v(pool(K)), dim=-1)                       # (B, n, g, f)
+        u = self.to_u(picked(A, self.pick_u)) * strength.unsqueeze(-1)    # (B, n, g, d)
+        v = F.normalize(self.to_v(picked(K, self.pick_v)), dim=-1)        # (B, n, g, f)
+        raw = (u, v)
+        u, v = exact_writes(u, v)
         here = mem.cache["layer"]
         target = here if self.target < 0 else self.target
         if target < here:
             raise ValueError(f"wa_target {target} is before the emitting layer {here}")
         mem.cache.setdefault("wa", {}).setdefault(target, []).append(
-            dict(u=u, v=v, chunk=C, swarm=sw, scope=self.scope, complete=T // C))
+            dict(u=u, v=v, raw_u=raw[0], raw_v=raw[1], matrix=self.matrix, chunk=C, swarm=sw, scope=self.scope, complete=T // C))
         return A.new_zeros(B, T, g, h)
+
+
+def exact_writes(u, v, floor=0.1):
+    """Turn each slot's sequence of writes (value u_e at key v_e) into rank-1 changes that do not disturb each other.
+
+    Adding u_e v_e^T as it is would also change what every earlier, similar key returns (crosstalk). Instead each
+    key is first made orthogonal to the slot's earlier keys, and the value is corrected for what the matrix already
+    returns at that key. After any number of writes, the changed matrix returns exactly u_e at key v_e for every
+    write so far (recursive least squares; the exact form of the delta rule). A key that repeats an earlier one
+    (less than `floor` of it is new) is only partly rewritten, to keep the change bounded.
+    u (B, n, g, d), v (B, n, g, f) unit length. Returns the corrected (u, v), same shapes."""
+    us, vs = [], []
+    for e in range(u.shape[1]):
+        ue, ve = u[:, e], v[:, e]
+        if vs:
+            Vp, Up = torch.stack(vs, 2), torch.stack(us, 2)               # (B, g, e, f), (B, g, e, d)
+            c = torch.einsum("bgef,bgf->bge", Vp, ve)                     # overlap with each earlier key
+            ve = ve - torch.einsum("bge,bgef->bgf", c, Vp)
+            ue = ue - torch.einsum("bge,bged->bgd", c, Up)                # what the matrix returns there already
+        r = ve.norm(dim=-1, keepdim=True)
+        vs.append(ve / r.clamp_min(1e-6))
+        us.append(ue / r.clamp_min(floor))
+    return torch.stack(us, 1), torch.stack(vs, 1)
 
 
 def visible(edit, T, device):
