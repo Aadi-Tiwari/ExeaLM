@@ -250,7 +250,7 @@ Starting points. Almost everything here runs on a laptop or a free Google Colab 
 - [ ] Swarm sizes that vary within a run (2 to 8)
 - [x] A weight-alter circuit (`WA`, `exealm/model/alter.py`, opt-in): a slot that emits rank-1 changes to an MLP weight matrix of its own agent or of the other agents in its swarm, learned from the ordinary loss; the changes last for one pass ([docs/memory.md](docs/memory.md))
 - [ ] Weight changes that persist across passes (a store like the persistent board), and a safety review before any edit reaches stored parameters
-- [ ] How many facts can weight edits carry? The relay with 4, 8, 16, 32 and 64 facts, board against weight-alter (`experiments/swarm_relay.py --facts N --memory WA --wa_key hidden`; a 0.8M model, runs on a laptop CPU or Colab) ([#58](https://github.com/exea-labs/ExeaLM/issues/58))
+- [x] Weight-edit capacity on the synthetic relay: hidden-key WA carries all 64 facts on both seeds, while the board averages 87.2% at 32 facts and stays near chance at 64 after the same 3,000 steps ([#58](https://github.com/exea-labs/ExeaLM/issues/58), [results](results/swarm_relay_capacity/README.md))
 - [ ] Weight-alter with 4 agents (three writers editing one reader) and with a later layer as the target (`wa_target`)
 - [ ] In the combined 0.1B model with `wa_key="hidden"` the relay went through weight edits alone and the board was unused (1 seed). Does that hold on more seeds, and does the board come back when the facts are longer than one chunk?
 - [ ] A relay built from real text (one agent reads a paragraph, another answers about it), to compare the board and weight-alter outside the toy task

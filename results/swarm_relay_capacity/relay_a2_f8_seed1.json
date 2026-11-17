@@ -1,0 +1,744 @@
+{
+ "args": {
+  "arms": "swarm",
+  "sweep": true,
+  "fact_counts": [
+   4,
+   8,
+   16,
+   32,
+   64
+  ],
+  "seeds": [
+   0,
+   1
+  ],
+  "steps": 3000,
+  "agents": 2,
+  "swarms": 8,
+  "facts": 8,
+  "fill": 64,
+  "chunk": 8,
+  "d": 128,
+  "layers": 4,
+  "slots": 8,
+  "h": 16,
+  "lr": 0.002,
+  "eval_every": 250,
+  "eval_batches": 16,
+  "seed": 1,
+  "board_chunk": 0,
+  "pool": "mean",
+  "memory": "AG",
+  "wa_slots": 1,
+  "wa_scope": "others",
+  "wa_matrix": "out",
+  "wa_key": "learned",
+  "device": "cpu",
+  "out": "results/swarm_relay_capacity"
+ },
+ "device": "cpu",
+ "chance": {
+  "acc": 0.0156,
+  "bits": 6.0
+ },
+ "runs": [
+  {
+   "arm": "swarm",
+   "params": 814320,
+   "final": {
+    "arm": "swarm",
+    "step": 3000,
+    "train_loss": 0.0065,
+    "secs": 199.4,
+    "shared": {
+     "acc": 0.9951,
+     "bits": 0.076,
+     "by_question": [
+      1.0,
+      1.0,
+      0.992,
+      1.0,
+      0.992,
+      0.992,
+      0.984,
+      1.0
+     ]
+    },
+    "cut": {
+     "acc": 0.0146,
+     "bits": 16.556,
+     "by_question": [
+      0.008,
+      0.031,
+      0.023,
+      0.016,
+      0.0,
+      0.008,
+      0.008,
+      0.023
+     ]
+    },
+    "eval_secs": 0.6
+   },
+   "curve": [
+    {
+     "arm": "swarm",
+     "step": 250,
+     "train_loss": 4.268,
+     "secs": 16.0,
+     "shared": {
+      "acc": 0.0195,
+      "bits": 6.08,
+      "by_question": [
+       0.023,
+       0.008,
+       0.023,
+       0.008,
+       0.016,
+       0.031,
+       0.023,
+       0.023
+      ]
+     },
+     "cut": {
+      "acc": 0.0195,
+      "bits": 6.081,
+      "by_question": [
+       0.023,
+       0.008,
+       0.023,
+       0.008,
+       0.016,
+       0.031,
+       0.023,
+       0.023
+      ]
+     },
+     "eval_secs": 0.6
+    },
+    {
+     "arm": "swarm",
+     "step": 500,
+     "train_loss": 3.0988,
+     "secs": 32.7,
+     "shared": {
+      "acc": 0.0791,
+      "bits": 4.478,
+      "by_question": [
+       0.055,
+       0.125,
+       0.047,
+       0.047,
+       0.086,
+       0.102,
+       0.117,
+       0.055
+      ]
+     },
+     "cut": {
+      "acc": 0.0127,
+      "bits": 7.564,
+      "by_question": [
+       0.008,
+       0.031,
+       0.008,
+       0.008,
+       0.016,
+       0.0,
+       0.016,
+       0.016
+      ]
+     },
+     "eval_secs": 0.6
+    },
+    {
+     "arm": "swarm",
+     "step": 750,
+     "train_loss": 1.8402,
+     "secs": 49.2,
+     "shared": {
+      "acc": 0.2764,
+      "bits": 2.644,
+      "by_question": [
+       0.234,
+       0.328,
+       0.25,
+       0.266,
+       0.25,
+       0.32,
+       0.281,
+       0.281
+      ]
+     },
+     "cut": {
+      "acc": 0.0166,
+      "bits": 9.671,
+      "by_question": [
+       0.031,
+       0.008,
+       0.031,
+       0.008,
+       0.023,
+       0.016,
+       0.008,
+       0.008
+      ]
+     },
+     "eval_secs": 0.6
+    },
+    {
+     "arm": "swarm",
+     "step": 1000,
+     "train_loss": 0.4,
+     "secs": 65.8,
+     "shared": {
+      "acc": 0.9385,
+      "bits": 0.578,
+      "by_question": [
+       0.914,
+       0.961,
+       0.977,
+       0.93,
+       0.93,
+       0.906,
+       0.93,
+       0.961
+      ]
+     },
+     "cut": {
+      "acc": 0.0176,
+      "bits": 11.92,
+      "by_question": [
+       0.023,
+       0.008,
+       0.023,
+       0.031,
+       0.023,
+       0.008,
+       0.008,
+       0.016
+      ]
+     },
+     "eval_secs": 0.6
+    },
+    {
+     "arm": "swarm",
+     "step": 1250,
+     "train_loss": 0.2478,
+     "secs": 82.6,
+     "shared": {
+      "acc": 0.9668,
+      "bits": 0.215,
+      "by_question": [
+       0.969,
+       0.953,
+       0.945,
+       0.992,
+       0.969,
+       0.953,
+       0.953,
+       1.0
+      ]
+     },
+     "cut": {
+      "acc": 0.0176,
+      "bits": 13.661,
+      "by_question": [
+       0.0,
+       0.016,
+       0.023,
+       0.031,
+       0.0,
+       0.031,
+       0.016,
+       0.023
+      ]
+     },
+     "eval_secs": 0.6
+    },
+    {
+     "arm": "swarm",
+     "step": 1500,
+     "train_loss": 0.3274,
+     "secs": 99.3,
+     "shared": {
+      "acc": 0.9844,
+      "bits": 0.113,
+      "by_question": [
+       0.984,
+       0.969,
+       0.969,
+       0.992,
+       0.984,
+       0.992,
+       0.992,
+       0.992
+      ]
+     },
+     "cut": {
+      "acc": 0.0166,
+      "bits": 15.179,
+      "by_question": [
+       0.008,
+       0.016,
+       0.016,
+       0.023,
+       0.008,
+       0.008,
+       0.039,
+       0.016
+      ]
+     },
+     "eval_secs": 0.6
+    },
+    {
+     "arm": "swarm",
+     "step": 1750,
+     "train_loss": 0.3424,
+     "secs": 116.0,
+     "shared": {
+      "acc": 0.9678,
+      "bits": 0.225,
+      "by_question": [
+       1.0,
+       0.969,
+       0.969,
+       0.953,
+       0.953,
+       0.961,
+       0.969,
+       0.969
+      ]
+     },
+     "cut": {
+      "acc": 0.0146,
+      "bits": 17.951,
+      "by_question": [
+       0.008,
+       0.023,
+       0.008,
+       0.023,
+       0.0,
+       0.016,
+       0.023,
+       0.016
+      ]
+     },
+     "eval_secs": 0.6
+    },
+    {
+     "arm": "swarm",
+     "step": 2000,
+     "train_loss": 0.4418,
+     "secs": 132.7,
+     "shared": {
+      "acc": 0.9629,
+      "bits": 0.34,
+      "by_question": [
+       0.969,
+       0.961,
+       0.961,
+       0.969,
+       0.969,
+       0.969,
+       0.977,
+       0.93
+      ]
+     },
+     "cut": {
+      "acc": 0.0127,
+      "bits": 17.663,
+      "by_question": [
+       0.016,
+       0.008,
+       0.0,
+       0.023,
+       0.008,
+       0.016,
+       0.016,
+       0.016
+      ]
+     },
+     "eval_secs": 0.6
+    },
+    {
+     "arm": "swarm",
+     "step": 2250,
+     "train_loss": 0.1769,
+     "secs": 149.4,
+     "shared": {
+      "acc": 0.9678,
+      "bits": 0.241,
+      "by_question": [
+       0.945,
+       0.977,
+       0.969,
+       0.977,
+       0.977,
+       0.969,
+       0.961,
+       0.969
+      ]
+     },
+     "cut": {
+      "acc": 0.0107,
+      "bits": 18.824,
+      "by_question": [
+       0.016,
+       0.008,
+       0.0,
+       0.016,
+       0.023,
+       0.016,
+       0.0,
+       0.008
+      ]
+     },
+     "eval_secs": 0.6
+    },
+    {
+     "arm": "swarm",
+     "step": 2500,
+     "train_loss": 0.0025,
+     "secs": 166.2,
+     "shared": {
+      "acc": 0.9863,
+      "bits": 0.138,
+      "by_question": [
+       0.992,
+       0.992,
+       0.984,
+       0.984,
+       1.0,
+       0.984,
+       0.977,
+       0.977
+      ]
+     },
+     "cut": {
+      "acc": 0.0137,
+      "bits": 16.973,
+      "by_question": [
+       0.0,
+       0.016,
+       0.008,
+       0.031,
+       0.0,
+       0.008,
+       0.031,
+       0.016
+      ]
+     },
+     "eval_secs": 0.6
+    },
+    {
+     "arm": "swarm",
+     "step": 2750,
+     "train_loss": 0.0022,
+     "secs": 182.8,
+     "shared": {
+      "acc": 0.9971,
+      "bits": 0.031,
+      "by_question": [
+       0.984,
+       1.0,
+       1.0,
+       1.0,
+       1.0,
+       1.0,
+       0.992,
+       1.0
+      ]
+     },
+     "cut": {
+      "acc": 0.0234,
+      "bits": 17.341,
+      "by_question": [
+       0.016,
+       0.023,
+       0.055,
+       0.016,
+       0.031,
+       0.008,
+       0.008,
+       0.031
+      ]
+     },
+     "eval_secs": 0.6
+    },
+    {
+     "arm": "swarm",
+     "step": 3000,
+     "train_loss": 0.0065,
+     "secs": 199.4,
+     "shared": {
+      "acc": 0.9951,
+      "bits": 0.076,
+      "by_question": [
+       1.0,
+       1.0,
+       0.992,
+       1.0,
+       0.992,
+       0.992,
+       0.984,
+       1.0
+      ]
+     },
+     "cut": {
+      "acc": 0.0146,
+      "bits": 16.556,
+      "by_question": [
+       0.008,
+       0.031,
+       0.023,
+       0.016,
+       0.0,
+       0.008,
+       0.008,
+       0.023
+      ]
+     },
+     "eval_secs": 0.6
+    }
+   ],
+   "config": {
+    "vocab_size": 256,
+    "d": 128,
+    "n_layers": 4,
+    "slots": 8,
+    "h": 16,
+    "ffn": -1,
+    "menu": [
+     "D",
+     "I",
+     "GI",
+     "M",
+     "MI",
+     "MIM",
+     "EP",
+     "G",
+     "C",
+     "RP",
+     "SM",
+     "OS",
+     "AG"
+    ],
+    "lags": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     6,
+     8,
+     12,
+     16,
+     32,
+     64,
+     128
+    ],
+    "tie_embeddings": true,
+    "pinned": {
+     "AG": 1
+    },
+    "init_weights": null,
+    "attn_layers": [],
+    "delta_layers": [],
+    "attn_gate": false,
+    "qk_norm": false,
+    "seed": 1,
+    "chunk": 8,
+    "rag_topk": 2,
+    "rag_chunk_len": 8,
+    "enc_dim": 32,
+    "rag_query": "last",
+    "rag_null": false,
+    "rag_key_dim": 0,
+    "rag_lexical": 0,
+    "swarm_size": 2,
+    "board_read_self": false,
+    "board_chunk": 0,
+    "wa_target": -1,
+    "wa_matrix": "out",
+    "wa_key": "learned",
+    "wa_scope": "all",
+    "chunk_pool": "mean"
+   },
+   "specs": [
+    [
+     {
+      "tmpl": "AG",
+      "lag": 0,
+      "lam0": 0.5
+     },
+     {
+      "tmpl": "GI",
+      "lag": 32,
+      "lam0": 0.2
+     },
+     {
+      "tmpl": "MI",
+      "lag": 1,
+      "lam0": -0.5
+     },
+     {
+      "tmpl": "G",
+      "lag": 12,
+      "lam0": -0.5
+     },
+     {
+      "tmpl": "M",
+      "lag": 1,
+      "lam0": -0.5
+     },
+     {
+      "tmpl": "D",
+      "lag": 8,
+      "lam0": -0.5
+     },
+     {
+      "tmpl": "RP",
+      "lag": 0,
+      "lam0": -0.5
+     },
+     {
+      "tmpl": "MI",
+      "lag": 128,
+      "lam0": 0.5
+     }
+    ],
+    [
+     {
+      "tmpl": "AG",
+      "lag": 0,
+      "lam0": 0.5
+     },
+     {
+      "tmpl": "RP",
+      "lag": 1,
+      "lam0": 0.9
+     },
+     {
+      "tmpl": "D",
+      "lag": 0,
+      "lam0": 0.2
+     },
+     {
+      "tmpl": "SM",
+      "lag": 16,
+      "lam0": 0.2
+     },
+     {
+      "tmpl": "EP",
+      "lag": 64,
+      "lam0": 0.5
+     },
+     {
+      "tmpl": "EP",
+      "lag": 128,
+      "lam0": 0.2
+     },
+     {
+      "tmpl": "C",
+      "lag": 3,
+      "lam0": -0.5
+     },
+     {
+      "tmpl": "G",
+      "lag": 16,
+      "lam0": 0.5
+     }
+    ],
+    [
+     {
+      "tmpl": "AG",
+      "lag": 0,
+      "lam0": 0.5
+     },
+     {
+      "tmpl": "MIM",
+      "lag": 3,
+      "lam0": 0.5
+     },
+     {
+      "tmpl": "G",
+      "lag": 4,
+      "lam0": 0.2
+     },
+     {
+      "tmpl": "EP",
+      "lag": 16,
+      "lam0": 0.2
+     },
+     {
+      "tmpl": "GI",
+      "lag": 64,
+      "lam0": 0.9
+     },
+     {
+      "tmpl": "I",
+      "lag": 128,
+      "lam0": 0.9
+     },
+     {
+      "tmpl": "OS",
+      "lag": 128,
+      "lam0": -0.5
+     },
+     {
+      "tmpl": "C",
+      "lag": 64,
+      "lam0": 0.5
+     }
+    ],
+    [
+     {
+      "tmpl": "AG",
+      "lag": 0,
+      "lam0": 0.5
+     },
+     {
+      "tmpl": "MI",
+      "lag": 4,
+      "lam0": -0.5
+     },
+     {
+      "tmpl": "C",
+      "lag": 8,
+      "lam0": 0.2
+     },
+     {
+      "tmpl": "G",
+      "lag": 3,
+      "lam0": -0.5
+     },
+     {
+      "tmpl": "EP",
+      "lag": 64,
+      "lam0": 0.5
+     },
+     {
+      "tmpl": "MIM",
+      "lag": 16,
+      "lam0": 0.9
+     },
+     {
+      "tmpl": "I",
+      "lag": 12,
+      "lam0": 0.2
+     },
+     {
+      "tmpl": "GI",
+      "lag": 16,
+      "lam0": -0.5
+     }
+    ]
+   ]
+  }
+ ],
+ "eval_seed": 10000,
+ "seq_len": 128,
+ "torch_threads": 2
+}
