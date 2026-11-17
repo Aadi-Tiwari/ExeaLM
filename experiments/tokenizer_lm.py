@@ -43,7 +43,7 @@ def bits_per_byte(model, val, a, dev):
 
 def run(tok, a, dev, kind="tonn", seed=0):
     root = os.path.join(a.root, tok)
-    train = MultiShards([os.path.join(root, t) for t in TRAIN], weights=[float(w) for w in a.mix.split(",")])
+    train = MultiShards([os.path.join(root, t) for t in a.train.split(",")], weights=[float(w) for w in a.mix.split(",")])
     vals = {v: TokenShards(os.path.join(root, v)) for v in VAL}
     torch.manual_seed(seed)
     # kinds: tonn (default: one RG and one AG circuit pinned per layer; idle here: no datastore, no swarm),
@@ -90,7 +90,8 @@ def run(tok, a, dev, kind="tonn", seed=0):
         if searcher is not None:
             searcher.maybe_round(model, opt, step, total, sel, a.seq)
         x, y, _ = train.batch(a.batch, a.seq, rng)
-        loss = model(x.to(dev), MemoryContext(), y.to(dev))[1]
+        with torch.autocast(device_type=dev.type, dtype=torch.bfloat16) if a.amp == "bf16" else torch.enable_grad():
+            loss = model(x.to(dev), MemoryContext(), y.to(dev))[1]
         opt.zero_grad(set_to_none=True)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -105,7 +106,7 @@ def run(tok, a, dev, kind="tonn", seed=0):
         step += 1
     rec = dict(model=kind, tag=a.tag, cfg=a.cfg if kind != "llama" else "{}", lr=a.lr, seed=seed, tokenizer=tok,
                vocab=int(train.meta["vocab_size"]), params_M=round(count_params(model) / 1e6, 2),
-               steps=total, seconds_budget=a.seconds, tokens_seen=total * a.batch * a.seq, bytes_seen=int(bytes_seen),
+               steps=total, seconds_budget=a.seconds, amp=a.amp, train=a.train, tokens_seen=total * a.batch * a.seq, bytes_seen=int(bytes_seen),
                secs=round(time.time() - t0, 1),
                bits_per_byte={v[4:]: bits_per_byte(model, s, a, dev) for v, s in vals.items()},
                architecture=model.architecture() if kind != "llama" else None, train_loss_every_250=curve)
@@ -118,6 +119,10 @@ def main():
     ap.add_argument("--root", default="data/tokpack")
     ap.add_argument("--toks", default="bpe32k,bpe48k,bpe64k")
     ap.add_argument("--mix", default="0.5,0.3,0.2", help="weights of English, Japanese and code in training")
+    ap.add_argument("--train", default=",".join(TRAIN), help="training packs under --root/<tokenizer>, in the order of --mix "
+                    "(train_en_big,train_ja_big,train_code_big hold 233M, 93M and 87M tokens: use them for runs past 3,000 steps)")
+    ap.add_argument("--amp", default="none", choices=["none", "bf16"], help="bf16: train in bfloat16 autocast (evaluation "
+                    "stays in 32-bit)")
     ap.add_argument("--steps", type=int, default=3000)
     ap.add_argument("--seconds", type=float, default=0, help="equal compute: set the step count to fill this many seconds")
     ap.add_argument("--batch", type=int, default=32)
