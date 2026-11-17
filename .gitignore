@@ -12,3 +12,6 @@ __pycache__/
 .DS_Store
 /build/
 /tokenizer/
+/experiments/gpu_session/jobs/
+/logs/
+logs_gpu_session.txt
