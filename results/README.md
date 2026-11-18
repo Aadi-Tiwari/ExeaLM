@@ -1,6 +1,6 @@
 # Results
 
-Experiments run on a Mac Studio (Apple M3 Ultra) on 2026-11-11. Each section names the script that reproduces it.
+The initial experiments ran on a Mac Studio (Apple M3 Ultra) on 2026-11-11. Each section names the script that reproduces it.
 Raw numbers are in the JSON files next to this page. Everything here is small-scale: these results test mechanisms,
 not the final model.
 
@@ -1081,3 +1081,21 @@ per byte:
   99.7 to 100% with the key taken from the edited layer. Chance is 1.6%.
 - One 94.7M model with the board, the library and weight-alter: relay 99.4%, lookup 77.6% on its good seed. The
   recipe trained in 2 of 5 runs at this size.
+
+## 15. How many facts can weight edits carry? (`experiments/swarm_relay.py --sweep`)
+
+**Setup.** Two agents, about 0.8M parameters per arm, 3,000 matched steps, and two seeds per fact count on an
+Apple M2 Max CPU. AG and hidden-key WA each have one cross-agent slot per layer. Each cell shows held-out
+accuracy with communication shared / cut, averaged over seeds 0 and 1.
+
+| Facts | Board (AG) | Hidden-key weight-alter (WA) |
+|---:|---:|---:|
+| 4 | 98.73% / 1.66% | 99.80% / 1.85% |
+| 8 | 99.12% / 1.31% | 100.00% / 1.31% |
+| 16 | 99.61% / 1.74% | 100.00% / 1.32% |
+| 32 | 87.19% / 1.70% | 100.00% / 1.66% |
+| 64 | 1.61% / 1.61% | 100.00% / 1.49% |
+
+**What it shows.** WA carries all 64 facts on both seeds, which is the largest load this relay's key vocabulary
+allows. The board loses accuracy at 32 facts and stays near chance (1.56%) at 64 under the same training budget.
+The [relay capacity report](swarm_relay_capacity/README.md) has the per-seed results, raw JSON, and command.
