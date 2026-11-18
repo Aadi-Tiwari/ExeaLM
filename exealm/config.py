@@ -4,6 +4,8 @@ Presets:
     "100m"        the model we plan to train: about 0.1B parameters (31M of them the embedding table), on about 100B
                   tokens; a hybrid (every third layer TONN, the others gated attention with QK-norm)
     "100m-tonn"   the same size, every layer TONN
+    "500m", "1b", "3b"   the scaling study: the same hybrid at 0.50B, 0.97B and 2.9B parameters with the 32k
+                  tokenizer (widths 1280, 1664 and 2560; 22, 26 and 34 layers). Not trained yet
     "small"       18M parameters (13M embedding table) with the same vocabulary, hybrid: for real-data experiments on
                   a laptop or a free Colab GPU
     "small-tonn"  the same size, every layer TONN (the base the experiment scripts start from)
@@ -91,9 +93,19 @@ class ModelConfig:
 # still add the type later.
 HYBRID = dict(init_weights={"C": 4.0, "G": 0.25, "D": 0.25, "RP": 0.0}, attn_gate=True, qk_norm=True)
 
+def hybrid(d, n_layers, h=32):
+    """The 100m preset's layout at another size: TONN at layers 0, 3, 6, ..., attention between, d / h circuits per
+    TONN layer. Everything else (the chunk encoder's width among it) stays at the 100m values until someone tunes it."""
+    return ModelConfig(d=d, n_layers=n_layers, slots=d // h, h=h, attn_layers=tuple(i for i in range(n_layers) if i % 3),
+                       **HYBRID)
+
+
 PRESETS = {
     "100m": ModelConfig(attn_layers=tuple(i for i in range(14) if i % 3), **HYBRID),        # TONN at 0, 3, 6, 9, 12
     "100m-tonn": ModelConfig(),
+    "500m": hybrid(1280, 22),
+    "1b": hybrid(1664, 26),
+    "3b": hybrid(2560, 34),
     "small": ModelConfig(d=256, n_layers=6, slots=8, h=32, enc_dim=128, attn_layers=(1, 2, 4, 5), **HYBRID),
     "small-tonn": ModelConfig(d=256, n_layers=6, slots=8, h=32, enc_dim=128),
     "tiny": ModelConfig(vocab_size=256, d=64, n_layers=2, slots=8, h=8, chunk=8, rag_topk=2, rag_chunk_len=8,

@@ -1,0 +1,65 @@
+#!/bin/bash
+# The first job on Expanse: is the model right on an H100, and how fast is it? About an hour on one node (4 GPU-hours).
+# From the repo root, in the environment setup.sh installed into:
+#
+#     export SBATCH_ACCOUNT=<your project>
+#     sbatch experiments/expanse/first_contact.sb
+#
+# Everything it measures lands in results/expanse/ and the job's output in logs/expanse/. PARTS picks and orders the
+# parts:  sbatch --export=ALL,PARTS="check speed" experiments/expanse/first_contact.sb
+#
+# Only the partition, the GPU type and the time limit below come from SDSC's user guide. Compare the other lines with
+# SDSC's own sample (/cm/shared/examples/sdsc/ExpanseAIR/pytorch) and change what differs.
+#SBATCH --job-name=exealm-first
+#SBATCH --partition=nairr-gpu
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=4
+#SBATCH --cpus-per-task=8
+#SBATCH --gpus=h100:4
+#SBATCH --time=02:00:00
+#SBATCH --output=logs/expanse/%x-%j.out
+set -uo pipefail
+cd "$SLURM_SUBMIT_DIR"
+PARTS=${PARTS:-"check speed circuits scaling"}
+OUT=results/expanse
+WORK=${LOCAL_DISK:-/scratch/$USER}/job_$SLURM_JOB_ID                   # the node's own NVMe, emptied when the job ends
+mkdir -p "$OUT" "$WORK"
+nvidia-smi --query-gpu=index,name,memory.total,driver_version --format=csv
+
+for part in $PARTS; do
+  echo "== $(date '+%F %T') $part"
+  case $part in
+    check)        # the same model on the GPU as on the CPU; training, resume and two processes on two GPUs
+      python experiments/gpu_check.py 2>&1 | tee "$OUT/gpu_check.txt" ;;
+    speed)        # one GPU, as measured on the MI300X; then the two larger shapes; then two switches at 0.5B
+      export CUDA_VISIBLE_DEVICES=0
+      python experiments/throughput.py --out "$OUT" --tag h100
+      python experiments/throughput.py --out "$OUT" --tag h100 --sizes 1B,3B --precision bf16
+      python experiments/throughput.py --out "$OUT" --tag h100 --sizes 0.5B --precision bf16 --compile 1 --warmup 25
+      python experiments/throughput.py --out "$OUT" --tag h100 --sizes 0.5B --precision bf16 --tf32 1
+      unset CUDA_VISIBLE_DEVICES ;;
+    circuits)     # which circuit types gain least from bf16 (an open to-do from the MI300X session)
+      for amp in none bf16; do
+        CUDA_VISIBLE_DEVICES=0 python experiments/profile_circuits.py --amp $amp > "$OUT/profile_circuits_$amp.json"
+      done ;;
+    scaling)      # the real training loop at 0.5B on real tokens from the local disk: 1 GPU against 4
+      rsync -a data/ "$WORK/data/"
+      args="--preset 500m --data $WORK/data/tokpack/bpe32k/train_en --val $WORK/data/tokpack/bpe32k/val_en
+            --seq 512 --batch 16 --steps 150 --eval_every 50 --eval_batches 2 --search 0"
+      CUDA_VISIBLE_DEVICES=0 python -m exealm.train.pretrain $args --out "$WORK/runs/scale_1gpu" > /dev/null
+      torchrun --nproc_per_node 4 -m exealm.train.pretrain $args --out "$WORK/runs/scale_4gpu" > /dev/null
+      python - "$WORK/runs" "$OUT/scaling_500m.json" <<'PY'
+import json, sys
+rows = {}
+for name in ("scale_1gpu", "scale_4gpu"):
+    last = [json.loads(l) for l in open(f"{sys.argv[1]}/{name}/log.jsonl") if '"eval"' in l][-1]   # past the warm-up
+    rows[name] = {k: last.get(k) for k in ("tokens_per_sec", "gpu_mem_gb", "processes_in_sync", "val_bits_per_token")}
+rows["speedup_on_4_gpus"] = round(rows["scale_4gpu"]["tokens_per_sec"] / rows["scale_1gpu"]["tokens_per_sec"], 2)
+json.dump(rows, open(sys.argv[2], "w"), indent=1)
+print(json.dumps(rows, indent=1))
+PY
+      ;;
+    *) echo "unknown part: $part" ;;
+  esac
+done
+echo "== $(date '+%F %T') done. Results: $OUT/"

@@ -21,9 +21,19 @@ about 56 GPU-hours. The default ExeaLM (two attention layers per TONN layer) tra
 transformer on our hardware, and retrieval adds about half again, so plan for about 85 GPU-hours with retrieval on
 (results/README.md, section 5).
 
-What exists: `exealm/train/pretrain.py` runs this loop on one device, with the search, retrieval, swarms, WSD,
-evaluation and checkpoints. A run can stop and pick up again exactly where it left off (`--save_every`, `--stop_at`,
+What exists: `exealm/train/pretrain.py` runs this loop with the search, retrieval, swarms, WSD, evaluation and
+checkpoints. A run can stop and pick up again exactly where it left off (`--save_every`, `--stop_at`,
 `--resume auto`), which is what lets a long run span several Colab sessions or preemptible GPU jobs.
+
+Several GPUs: `torchrun --nproc_per_node 4 -m exealm.train.pretrain ...` starts one process per GPU. Each reads its
+own batches (whole swarms), the gradients are averaged, and every process takes the same step; process 0 alone logs,
+evaluates, searches and saves (`exealm/train/multi.py`). `--batch` is per GPU and per forward pass, and `--accum`
+passes go into one step, so a step is batch × seq × accum × GPUs tokens. This is tested with two processes on a CPU,
+where a resumed run matches an uninterrupted one to the last bit, and has not run on real GPUs yet.
+
+Job time limits: `--save_minutes` writes checkpoints on the clock and `--max_minutes` saves and stops before a limit,
+keeping the schedule. [experiments/expanse](../experiments/expanse/README.md) has the Slurm job that chains such
+sessions on SDSC Expanse, where a node has four H100s.
 
 The full mix: `--data mix.json` names the sources, where each one lives (one packed directory or many) and what
 share of the training tokens it gets. The form is in `exealm/data/loader.py` (`open_data`). Token files are
@@ -31,9 +41,9 @@ memory-mapped when first used, so nothing is loaded up front. With a mix, name t
 `--datastore_data`.
 
 What's missing:
-- multi-GPU (DDP, then FSDP)
+- models that do not fit one GPU (FSDP), and more than one node
 - context extension
-- `torch.compile`
+- `torch.compile` is behind `--compile 1` (after the search has frozen the architecture) and unmeasured on a GPU
 
 ## Post-training
 

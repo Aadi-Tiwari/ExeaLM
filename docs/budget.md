@@ -19,6 +19,32 @@ The 300 TFLOPs figure is an assumption. Attention runs as fused kernels on NVIDI
 not yet, so real throughput could be up to 2× lower. **A one-hour benchmark on the 0.1B preset should come first**
 (about $3–4 on one GPU).
 
+## The scaling study: 2,000 GPU-hours on SDSC Expanse
+
+The NAIRR Pilot approved 2,000 GPU-hours for ExeaLM on the SDSC Expanse AI Resource (nodes of four NVIDIA H100s,
+80 GB each). The plan below is the one in the proposal. Its GPU-hours use the rates measured on one AMD MI300X in
+bf16 at 0.5B ([results/funding](../results/funding/README.md), section 6): 81 effective TFLOP/s for every ExeaLM
+run and 125 for every baseline. GPU-hours = 6 × parameters × tokens / (TFLOP/s × 3600 × 10¹²).
+
+| Run | Width, layers | Training tokens | GPU-hours |
+|---|---|---|---|
+| ExeaLM 0.5B (`500m`) | 1280, 22 | 30B | 307 |
+| Baseline 0.5B | 1280, 22 | 30B | 190 |
+| ExeaLM 1B (`1b`) | 1664, 26 | 20B | 397 |
+| Baseline 1B | 1664, 26 | 20B | 248 |
+| ExeaLM 3B (`3b`) | 2560, 34 | 8B | 477 |
+| Evaluation and short post-training of all five | | | 150 |
+| Library builds, restarts and reserve | | | 231 |
+| **Total** | | | **2,000** |
+
+Two things will change these numbers, and both are measured by the first job on Expanse
+([experiments/expanse](../experiments/expanse/README.md)): the rate of one H100, and the speed-up of four GPUs over
+one. A whole node is charged 4 GPU-hours per hour, so a run on four GPUs that is S times as fast as on one costs
+4 / S times the GPU-hours above. `experiments/throughput.py` prints the table again at the measured single-GPU rate.
+
+If fewer hours fit: drop the 1B baseline (248 hours), then halve the tokens of the 1B run (199), then replace the 3B
+run with a 2B run on the same tokens (about 160).
+
 ## What it costs to rent
 
 RunPod on-demand list prices on 2026-11-11, per GPU-hour:

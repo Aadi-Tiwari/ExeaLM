@@ -17,6 +17,7 @@ python experiments/gpu_session/summarize.py             # tables of what has fin
 ```
 
 `run_all.sh` survives a closed terminal. Run it again after a crash and it continues: finished jobs are skipped.
+On a node with several GPUs it pins every job to one GPU and runs that many times more jobs at once.
 When it prints `ALL PHASES FINISHED`, copy `results/gpu_session/` and `logs/gpu_session/` off the box before
 destroying it (the `.pt` files in `results/gpu_session/combined/` are 0.4 GB each and optional).
 
@@ -32,7 +33,10 @@ destroying it (the `.pt` files in `results/gpu_session/combined/` are 0.4 GB eac
 The times are estimates from the last session's step times, not measurements of these queues.
 
 To run only some phases, or in another order: `PHASES="eqtime combined" bash experiments/gpu_session/run_all.sh`.
-If a phase runs out of GPU memory, lower its count: `COMBINED_PARALLEL=2`, `LONG_PARALLEL=2`, `SMALL_PARALLEL=4`.
+"At a time" in the table is per GPU, on a GPU with 160 GB or more. Below that (an 80 GB H100) the defaults are 1, 1
+and 3 per GPU, which is a guess from the MI300X counts and not a measurement. Set them yourself with
+`COMBINED_PARALLEL`, `LONG_PARALLEL` and `SMALL_PARALLEL`: lower if a phase runs out of GPU memory, higher if
+`nvidia-smi` shows room.
 
 ### 1. `eqtime`: equal training time at 0.1B
 

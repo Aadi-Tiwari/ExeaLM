@@ -1,0 +1,114 @@
+#!/bin/bash
+# One training run on one Expanse node, continued over as many 48-hour jobs as it needs. From the repo root:
+#
+#     export SBATCH_ACCOUNT=<your project>
+#     export RUN=exealm_500m_s0
+#     export ARGS="--preset 500m --data experiments/expanse/mix_tokpack.json --val data/tokpack/bpe32k/val_en --seq 512 --batch 16 --steps 3000 --lr 1e-3"
+#     sbatch experiments/expanse/train.sb
+#
+# What a job does:
+#   1. copies ./data to the node's NVMe and runs from a folder there that looks like the repo (data is the copy, the
+#      rest are links), so every path in ARGS, and inside a mix .json, stays as it is in the repo
+#   2. brings back the run's last checkpoint from KEEP, if there is one, and continues it (--resume auto)
+#   3. trains on all the job's GPUs, writing a checkpoint every SAVE_MIN minutes and copying each one to KEEP
+#   4. stops cleanly MARGIN_MIN minutes before the job's time limit, copies the run back, and submits the next job,
+#      until the run has written model.pt
+# The node's disk is emptied when a job ends, so KEEP is the only place a run survives. A job that crashes is not
+# resubmitted: read its output, then submit again by hand and it continues from the last checkpoint in KEEP.
+#
+# Settings (environment variables; `export` them before sbatch so that the follow-on jobs get them too):
+#   RUN         name of the run: its folder under KEEP                                          (required)
+#   ARGS        arguments of exealm.train.pretrain, without --out, --resume and the time options (required)
+#   KEEP        where runs are kept: a folder, or s3://bucket/prefix (needs s3cmd)               (default: ./runs)
+#   DATA        the packed data to copy in: a folder or s3://bucket/prefix                       (default: ./data)
+#   SAVE_MIN    minutes between checkpoints (default 30)       MARGIN_MIN  minutes kept for the last save and copy (45)
+#   JOBS_LEFT   how many more jobs may follow this one (default 20)
+# A different partition, GPU count or time limit: SBATCH_PARTITION, SBATCH_GPUS and SBATCH_TIMELIMIT, e.g. one GPU on
+# the shared partition:  export SBATCH_PARTITION=nairr-gpu-shared SBATCH_GPUS=h100:1
+#
+# Only the partition, the GPU type and the time limit below come from SDSC's user guide. Compare the other lines with
+# SDSC's own sample (/cm/shared/examples/sdsc/ExpanseAIR/pytorch) and change what differs. Not yet run on Expanse.
+#SBATCH --job-name=exealm
+#SBATCH --partition=nairr-gpu
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=4
+#SBATCH --cpus-per-task=8
+#SBATCH --gpus=h100:4
+#SBATCH --time=48:00:00
+#SBATCH --output=logs/expanse/%x-%j.out
+set -uo pipefail
+: "${RUN:?set RUN to the name of the run}" "${ARGS:?set ARGS to the arguments of exealm.train.pretrain}"
+REPO=$SLURM_SUBMIT_DIR
+KEEP=${KEEP:-$REPO/runs}
+DATA=${DATA:-$REPO/data}
+SAVE_MIN=${SAVE_MIN:-30}
+MARGIN_MIN=${MARGIN_MIN:-45}
+JOBS_LEFT=${JOBS_LEFT:-20}
+WORK=${LOCAL_DISK:-/scratch/$USER}/job_$SLURM_JOB_ID                   # the node's own NVMe, emptied when the job ends
+OUT=$WORK/runs/$RUN
+GPUS=${SLURM_GPUS_ON_NODE:-$(nvidia-smi -L | wc -l | tr -d ' ')}
+export PYTHONPATH="$REPO${PYTHONPATH:+:$PYTHONPATH}"                    # the job runs from the NVMe, not the repo
+
+copy() {                                                               # copy <from>/ <to>/ ; either may be s3://...
+  case "$1$2" in
+    *s3://*) s3cmd sync --no-progress --exclude '*.tmp' "$1" "$2" ;;
+    *)       mkdir -p "$2" && rsync -a --exclude '*.tmp' "$1" "$2" ;;
+  esac
+}
+minutes() {                                                            # Slurm's 2-00:00:00, 12:00:00 or 30:00, in minutes
+  python -c "
+import sys
+d, _, t = sys.argv[1].rpartition('-')
+p = [int(x) for x in t.split(':')]
+p = [0] * (3 - len(p)) + p
+print(int(d or 0) * 1440 + p[0] * 60 + p[1])" "$1"
+}
+
+echo "== $(date '+%F %T') job $SLURM_JOB_ID on $(hostname): run $RUN, $GPUS GPU(s), kept in $KEEP"
+mkdir -p "$WORK/data" "$OUT"
+copy "$DATA/" "$WORK/data/" || { echo "could not copy the data in"; exit 1; }
+if [[ $KEEP == s3://* ]] || [ -d "$KEEP/$RUN" ]; then
+  copy "$KEEP/$RUN/" "$OUT/" || echo "nothing to continue from in $KEEP/$RUN"
+fi
+[ -f "$OUT/model.pt" ] && { echo "$RUN is already finished"; exit 0; }
+[ -f "$OUT/ckpt.pt" ] && echo "continuing from $OUT/ckpt.pt" || echo "starting $RUN from scratch"
+
+limit=$(squeue -h -j "$SLURM_JOB_ID" -o %l)
+max_min=$(( $(minutes "$limit") - MARGIN_MIN ))
+[ "$max_min" -gt 0 ] || { echo "the time limit ($limit) is shorter than MARGIN_MIN"; exit 1; }
+
+keep_copying() {                                                       # every new checkpoint goes to KEEP at once
+  local seen=""
+  while sleep 60; do
+    now=$(stat -c %Y "$OUT/ckpt.pt" 2>/dev/null || true)
+    if [ -n "$now" ] && [ "$now" != "$seen" ]; then
+      copy "$OUT/" "$KEEP/$RUN/" && seen=$now
+    fi
+  done
+}
+keep_copying &
+copier=$!
+disown $copier
+
+for f in "$REPO"/*; do                                                 # the repo's other folders, as links
+  [ -e "$WORK/$(basename "$f")" ] || ln -s "$f" "$WORK/"
+done
+cd "$WORK"                                                             # so data/... in ARGS is the copy on the NVMe
+if [ "$GPUS" -gt 1 ]; then launch="torchrun --nproc_per_node $GPUS -m"; else launch="python -m"; fi
+$launch exealm.train.pretrain $ARGS --out "$OUT" --resume auto --save_minutes "$SAVE_MIN" --max_minutes "$max_min"
+code=$?
+kill $copier 2>/dev/null
+copy "$OUT/" "$KEEP/$RUN/" || { echo "COULD NOT COPY THE RUN BACK: $OUT is lost when this job ends"; exit 1; }
+
+cd "$REPO"
+if [ -f "$OUT/model.pt" ]; then
+  echo "== $(date '+%F %T') $RUN finished: $KEEP/$RUN/model.pt"
+elif [ $code -ne 0 ]; then
+  echo "== $(date '+%F %T') training failed (exit $code). Not resubmitting. The last checkpoint is in $KEEP/$RUN"
+  exit $code
+elif [ "$JOBS_LEFT" -le 0 ]; then
+  echo "== $(date '+%F %T') stopped at the time limit and JOBS_LEFT is used up. Submit again to continue"
+else
+  export JOBS_LEFT=$((JOBS_LEFT - 1))
+  echo "== $(date '+%F %T') stopped at the time limit. Next job: $(sbatch --parsable experiments/expanse/train.sb)"
+fi

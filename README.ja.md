@@ -250,13 +250,13 @@ Mac Studio での以前の小規模なテストです。すべて [results/READM
 - [ ] 1 回の学習の中でスウォームのサイズを変える（2 から 8）
 - [x] 重み書き換え回路（`WA`、`exealm/model/alter.py`、オプトイン）：自分のエージェント、または同じスウォームのほかのエージェントの MLP 重み行列にランク 1 の変更を出すスロットです。通常の損失から学習します。変更は 1 回のパスの間だけ有効です（[docs/memory.md](docs/memory.md)）
 - [ ] パスをまたいで残る重みの変更（永続的な掲示板のようなストア）と、編集が保存済みのパラメータに届く前の安全性レビュー
-- [ ] 重みの編集はいくつの事実を運べるか。事実が 4、8、16、32、64 件のリレー課題で、掲示板と重み書き換えを比べます（`experiments/swarm_relay.py --facts N --memory WA --wa_key hidden`。0.8M モデルで、ノートパソコンの CPU か Colab で動きます）（[#58](https://github.com/exea-labs/ExeaLM/issues/58)）
+- [x] 合成リレー課題での重み編集の容量：編集される層からキーを取る WA（`wa_key="hidden"`）は、2 つのシードとも 64 件すべての事実を運びます。掲示板は同じ 3,000 ステップで、32 件では平均 87.2%、64 件では偶然の水準にとどまります（[#58](https://github.com/exea-labs/ExeaLM/issues/58)、[結果](results/swarm_relay_capacity/README.md)）
 - [ ] エージェント 4 つでの重み書き換え（書き手 3 つが読み手 1 つを編集）と、より後ろの層を対象にした重み書き換え（`wa_target`）
 - [ ] `wa_key="hidden"` を使った統合 0.1B モデルでは、リレー課題は重みの編集だけで伝わり、掲示板は使われませんでした（1 シード）。シードを増やしても同じか。事実が 1 チャンクより長いとき、掲示板は再び使われるか
 - [ ] 実テキストから作るリレー課題（あるエージェントが段落を読み、別のエージェントがそれについて答える）。作り物の課題の外で掲示板と重み書き換えを比べます
 - [ ] エージェントの識別：エージェントが専門化できるよう、投稿に役割または id の信号を付けます
 - [ ] 検索の分業：スウォーム内のエージェントは別々のチャンクを取り出すか。それに報酬を与えてみます
-- [ ] スウォームを考慮したマルチ GPU 学習。各スウォームを 1 つの GPU に置きます（CPU 上の 2 プロセスでテストできます）
+- [ ] スウォームを考慮したマルチ GPU 学習。各スウォームを 1 つの GPU に置きます。実装済みです：各プロセスが自分の GPU 用にスウォーム単位でバッチを作ります（`exealm/train/multi.py`、CPU 上の 2 プロセスでテスト済み）。**（GPU）** 実際の GPU ではまだ動かしていません
 - [ ] スウォーム SFT のデータ：マルチホップ QA から作る、情報を分割した課題。[DATA.md](DATA.md) の「tool use and agentic」の不足もこれで埋まります
 - [ ] スウォーム SFT ループ：答えるエージェントに損失をかけ、掲示板を通して学習します（`tiny` プリセットでテスト）
 - [ ] スウォーム RL（GRPO）：スウォーム全体で試行し、報酬を共有します（`tiny` プリセットでテスト）
@@ -296,7 +296,7 @@ Mac Studio での以前の小規模なテストです。すべて [results/READM
 - [x] 回転位置アテンションを外した初期メニューが、ハイブリッドの既定です（`exealm/config.py` の `HYBRID`。探索はこの種類をあとから追加できます）。13M の 10 シードで 1.511（Qwen3.5 型 1.522、ゲート付き Llama 1.522）、0.1B の 3 シードで 1.413 でした（元のメニュー 1.427、ゲート付き Llama 1.446、Qwen3.5 型 1.457）
 - [ ] （GPU）同じ比較を bf16 で学習時間をそろえて行う。bf16 では、0.1B でハイブリッドが 1 ステップあたり Llama より 1.6 倍遅くなります。ゲート付き Llama に対する 0.033 のリードは残るか。この項目と続く GPU 項目のジョブ一式は、すぐ実行できる形で [experiments/gpu_session](experiments/gpu_session/README.md) にあります
 - [ ] （GPU）より長い学習：0.1B でのリードは 10 倍のトークン（約 500M）でも保たれるか
-- [ ] （GPU）スケールアップ：0.5B、1B、3B で同じ比較を行い、サイズによってリードがどう変わるかを見ます
+- [ ] （GPU）スケールアップ：0.5B、1B、3B で同じ比較を行い、サイズによってリードがどう変わるかを見ます。プリセット（`500m`、`1b`、`3b`）、ジョブファイル、SDSC Expanse の H100 ノードで最初に取る測定は用意できています：[experiments/expanse](experiments/expanse/README.md)
 - [ ] 初期メニューのほかの回路の種類のうち、どれが害になり、どれが役に立つか。13M で種類を 1 つずつ外し、各 3 シードで調べます（Colab で動く規模）（[#59](https://github.com/exea-labs/ExeaLM/issues/59)）
 - [x] 重み書き換えは、リレー課題で掲示板が伝える量の約半分しか伝えませんでした（52% 対 99.8%）。モデルが値をキーに結び付けることを学ばなかったためです。キーを編集先の層から取ると（`wa_key="hidden"`）、99.7 から 100% が伝わります（6 回）
 - [x] `wa_key="hidden"` を使った重み書き換えを、実テキストと統合モデルで試す：13M でバイトあたり 0.003 から 0.005 ビットのコストがかかります（3 シード）。統合 0.1B モデルでは、これだけでリレー課題を伝えます（100%、1 シード）
@@ -316,10 +316,11 @@ Mac Studio での以前の小規模なテストです。すべて [results/READM
 - [ ] MI300X の bf16 では、ハイブリッドは 0.1B と 0.5B で 1 ステップあたり Llama より 1.6 倍遅くなります（32 ビットでは 1.2 倍）。bf16 で最も遅くなる回路を見つけて直します（[スループット](results/funding/README.md)）
 - [ ] flash-linear-attention を使った、NVIDIA 上の高速な Gated DeltaNet（[#31](https://github.com/exea-labs/ExeaLM/issues/31)）
 - [ ] 再帰状態のキャッシュ。トークンを 1 つ生成するたびにコンテキスト全体を読み直さずに済むようにします
-- [ ] `torch.compile` への対応
+- [ ] `torch.compile` への対応。`exealm.train.pretrain --compile 1` は、探索がアーキテクチャを固定した後にモデルをコンパイルします。GPU では未検証で、効果は `experiments/throughput.py --compile 1` で測れます
 - [x] 学習速度のベンチマーク：既定の 2:1 ハイブリッドのコストは、トークンあたり同じサイズの Llama の 1.01 倍、検索を入れると 1.49 倍です（純粋な TONN は 1.5 倍でした）（[結果](results/README.md#5-speed-of-the-real-model-experimentsspeedpy)、`experiments/speed.py`）
 - [x] （入門向け）生成速度：`python -m exealm.eval.speed` は、学習と生成の 1 秒あたりのトークン数を同じサイズの Llama と比べて計測します
 - [ ] （GPU）MI300X でテストと短い学習を実行し、何が壊れるかを報告する
+- [ ] （GPU）NVIDIA の GPU で `python experiments/gpu_check.py` を実行する：すべての回路の種類と各モデル全体を、32 ビットと bf16 で GPU と CPU の間で比べ、続いて学習、再開、2 プロセスを確かめます
 
 ### データ（[DATA.md](DATA.md)、`exealm/data/`）
 - [ ] DATA.md のすべてのソースをダウンロードして配置する：並列、再開可能、チェックサム付き（サンプルで作ってテストします）
@@ -340,7 +341,8 @@ Mac Studio での以前の小規模なテストです。すべて [results/READM
 - [ ] 特殊トークンの確定：チャットの役割、エージェントの役割、掲示板
 
 ### 学習（`exealm/train/pretrain.py`）
-- [ ] マルチ GPU：DDP、次に FSDP（DDP は CPU 上の 2 プロセスでテストできます）（[#17](https://github.com/exea-labs/ExeaLM/issues/17)）
+- [ ] マルチ GPU：DDP、次に FSDP（[#17](https://github.com/exea-labs/ExeaLM/issues/17)）。DDP の部分は実装済みです（`torchrun --nproc_per_node 4 -m exealm.train.pretrain`、`exealm/train/multi.py`）：勾配の平均、プロセス 0 での探索とチェックポイント、中断なしの学習と完全に一致する再開。CPU 上の 2 プロセスでテスト済みで、**（GPU）** 実際の GPU ではまだ動かしていません
+- [x] 勾配の累積（`--accum`）、一定時間ごとのチェックポイント（`--save_minutes`）、ジョブの制限時間の前に安全に止める機能（`--max_minutes`、または SIGUSR1/SIGTERM）
 - [x] チェックポイントからの厳密な再開（`--save_every`、`--stop_at`、`--resume auto`）
 - [x] Weights & Biases へのログ記録（`exealm.train.pretrain` の `--wandb PROJECT`。再開した学習は同じ W&B の run を続けます）
 - [ ] 学習の終盤でのコンテキスト拡張

@@ -119,3 +119,21 @@ def test_hybrid_attention_layers_and_starting_mix():
     logits, loss = m(x, targets=x)
     loss.backward()
     assert logits.shape == (2, 24, cfg.vocab_size) and torch.isfinite(loss)
+
+
+def test_scaling_presets_have_the_planned_sizes():
+    """The 0.5B, 1B and 3B shapes of the scaling study, counted without allocating them. With the 32k tokenizer the
+    memory-free hybrid at 0.5B and its Llama are the two models timed on the MI300X (497.1M and 474.1M)."""
+    from exealm.config import PRESETS, hybrid
+
+    assert PRESETS["100m"] == hybrid(640, 14)                              # one layout at every size
+    for name, billions in (("500m", 0.50), ("1b", 0.97), ("3b", 2.90)):
+        cfg = get_config(name, vocab_size=32768)
+        assert cfg.slots * cfg.h == cfg.d and cfg.d % 64 == 0
+        with torch.device("meta"):
+            n = count_params(ExeaLM(cfg))
+        assert abs(n / 1e9 - billions) < 0.006, (name, n)
+    core = get_config("500m", vocab_size=32768, pinned={}, menu=tuple(t for t in MENU if t not in ("RG", "AG")))
+    with torch.device("meta"):
+        assert round(count_params(ExeaLM(core)) / 1e6, 1) == 497.1
+        assert round(count_params(Llama(llama_baseline(core))) / 1e6, 1) == 474.1

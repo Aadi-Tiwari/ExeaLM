@@ -2,6 +2,7 @@
 type, against a standard attention block of the same width, on the chosen device.
 
 python experiments/profile_circuits.py --device mps
+python experiments/profile_circuits.py --amp bf16        # on a GPU: which circuit types gain least from bf16?
 """
 import argparse
 import json
@@ -20,12 +21,13 @@ from exealm.train.pretrain import pick_device  # noqa: E402
 from experiments.speed import sync  # noqa: E402
 
 
-def bench(mod, x, dev, reps):
+def bench(mod, x, dev, reps, bf16=False):
     for i in range(2 + reps):
         if i == 2:
             sync(dev)
             t0 = time.time()
-        y = mod(x)
+        with torch.autocast(device_type=dev.type, dtype=torch.bfloat16) if bf16 else torch.enable_grad():
+            y = mod(x)
         y.float().pow(2).mean().backward()
     sync(dev)
     return (time.time() - t0) / reps * 1000
@@ -37,17 +39,19 @@ def main():
     ap.add_argument("--batch", type=int, default=32)
     ap.add_argument("--seq", type=int, default=512)
     ap.add_argument("--reps", type=int, default=5)
+    ap.add_argument("--amp", default="none", choices=["none", "bf16"])
     a = ap.parse_args()
+    bf16 = a.amp == "bf16"
     dev = pick_device(a.device)
     cfg = get_config("small-tonn")
     x = torch.randn(a.batch, a.seq, cfg.d, device=dev, requires_grad=True)
-    out = {"attention block": round(bench(Attention(cfg.d, cfg.d // 64).to(dev), x, dev, a.reps), 1)}
+    out = {"attention block": round(bench(Attention(cfg.d, cfg.d // 64).to(dev), x, dev, a.reps, bf16), 1)}
     for t in CIRCUITS:
         if t in MEMORY_CIRCUITS:
             continue
         specs = [dict(tmpl=t, lag=1, lam0=0.5) for _ in range(cfg.slots)]
-        out[t] = round(bench(TONNLayer(cfg, specs, 0).to(dev), x, dev, a.reps), 1)
-    print(json.dumps(dict(device=str(dev), ms_per_layer_fwd_bwd=out), indent=1))
+        out[t] = round(bench(TONNLayer(cfg, specs, 0).to(dev), x, dev, a.reps, bf16), 1)
+    print(json.dumps(dict(device=str(dev), amp=a.amp, ms_per_layer_fwd_bwd=out), indent=1))
 
 
 if __name__ == "__main__":

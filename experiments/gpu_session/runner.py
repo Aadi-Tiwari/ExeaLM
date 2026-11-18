@@ -1,6 +1,10 @@
 """Run a file of jobs, a few at a time, skipping the ones that already finished.
 
     python experiments/gpu_session/runner.py jobs/eqtime.txt 1
+    python experiments/gpu_session/runner.py jobs/small.txt 12 0,1,2,3      # 12 at a time, spread over four GPUs
+
+With a list of GPUs, each running job sees exactly one of them (CUDA_VISIBLE_DEVICES) and the jobs are spread evenly.
+Without one, every job sees what the runner sees, as before.
 
 Each line of the file is  TAG <tab> OUTPUT FILE <tab> SHELL COMMAND.  A job that exits cleanly and wrote its output
 file gets a marker, logs/gpu_session/TAG.ok, and is skipped from then on, so the same call resumes a queue after a
@@ -8,10 +12,13 @@ crash or a reboot. A job that fails is listed at the end; run the same call agai
 output goes to logs/gpu_session/TAG.log.
 """
 import os
+import queue
 import subprocess
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
+
+SEATS = queue.Queue()                                   # one entry per job that may run at once: the GPU it gets
 
 
 def run(job):
@@ -21,8 +28,13 @@ def run(job):
     if os.path.exists(marker):
         return tag, "skipped (already done)"
     t0 = time.time()
-    with open(f"logs/gpu_session/{tag}.log", "w") as log:
-        code = subprocess.run(cmd, shell=True, stdout=log, stderr=subprocess.STDOUT).returncode
+    gpu = SEATS.get()
+    env = None if gpu is None else dict(os.environ, CUDA_VISIBLE_DEVICES=gpu)
+    try:
+        with open(f"logs/gpu_session/{tag}.log", "w") as log:
+            code = subprocess.run(cmd, shell=True, stdout=log, stderr=subprocess.STDOUT, env=env).returncode
+    finally:
+        SEATS.put(gpu)
     ok = code == 0 and os.path.exists(out)
     if ok:
         open(marker, "w").write(out + "\n")
@@ -32,6 +44,9 @@ def run(job):
 
 def main():
     path, parallel = sys.argv[1], int(sys.argv[2])
+    gpus = [g for g in sys.argv[3].split(",") if g] if len(sys.argv) > 3 else [None]
+    for i in range(parallel):
+        SEATS.put(gpus[i % len(gpus)])
     jobs = [line.rstrip("\n").split("\t", 2) for line in open(path) if line.strip() and not line.startswith("#")]
     with ThreadPoolExecutor(parallel) as ex:
         results = list(ex.map(run, jobs))

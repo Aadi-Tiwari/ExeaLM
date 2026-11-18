@@ -256,7 +256,7 @@ Starting points. Almost everything here runs on a laptop or a free Google Colab 
 - [ ] A relay built from real text (one agent reads a paragraph, another answers about it), to compare the board and weight-alter outside the toy task
 - [ ] Agent identity: a role or id signal on posts so agents can specialize
 - [ ] Retrieval division of labor: do agents in a swarm pull different chunks? Try rewarding it
-- [ ] Swarm-aware multi-GPU training, keeping each swarm on one GPU (testable on a CPU with two processes)
+- [ ] Swarm-aware multi-GPU training, keeping each swarm on one GPU. Written: every process draws whole swarms for its own GPU (`exealm/train/multi.py`), tested with two processes on a CPU. **(GPU)** Not yet run on real GPUs
 - [ ] Swarm SFT data: split-information tasks built from multi-hop QA. This also fills the "tool use and agentic" gap in [DATA.md](DATA.md)
 - [ ] Swarm SFT loop: loss on the answering agent, trained through the board (test on the `tiny` preset)
 - [ ] Swarm RL (GRPO): whole-swarm attempts with a shared reward (test on the `tiny` preset)
@@ -296,7 +296,7 @@ Starting points. Almost everything here runs on a laptop or a free Google Colab 
 - [x] The starting menu without rotary attention is the default for the hybrid (`HYBRID` in `exealm/config.py`; the search can still add the type). It scored 1.511 over 10 seeds at 13M (Qwen3.5-style 1.522, gated Llama 1.522) and 1.413 over 3 seeds at 0.1B (original menu 1.427, gated Llama 1.446, Qwen3.5-style 1.457)
 - [ ] (GPU) The same comparison at equal training time in bf16, where the hybrid is 1.6 times slower per step than Llama at 0.1B: does the 0.033 lead over the gated Llama survive? The queue for this and the next three GPU items is ready to run: [experiments/gpu_session](experiments/gpu_session/README.md)
 - [ ] (GPU) Longer runs: do the 0.1B leads hold at 10 times the tokens (about 500M)?
-- [ ] (GPU) Scale up: 0.5B, 1B and 3B with the same comparison, to see how the lead changes with size
+- [ ] (GPU) Scale up: 0.5B, 1B and 3B with the same comparison, to see how the lead changes with size. The presets (`500m`, `1b`, `3b`), the job files and the first measurements to take on the H100 nodes of SDSC Expanse are ready: [experiments/expanse](experiments/expanse/README.md)
 - [ ] Which other circuit types hurt or help in the starting menu? Leave one type out at a time at 13M, 3 seeds each (Colab-sized) ([#59](https://github.com/exea-labs/ExeaLM/issues/59))
 - [x] Weight-alter passed about half of what the board passes on the relay (52% against 99.8%), because the model did not learn to tie values to keys. With the key taken from the edited layer (`wa_key="hidden"`) it passes 99.7 to 100% (6 runs)
 - [x] Weight-alter with `wa_key="hidden"` on real text and in the combined model: it costs 0.003 to 0.005 bits per byte at 13M (3 seeds); in the combined 0.1B model it carries the relay alone (100%, 1 seed)
@@ -316,10 +316,11 @@ Starting points. Almost everything here runs on a laptop or a free Google Colab 
 - [ ] In bf16 on the MI300X the hybrid is 1.6 times slower per step than Llama at 0.1B and 0.5B (1.2 times in 32-bit). Find which circuits lose the most from bf16 and fix them ([throughput](results/funding/README.md))
 - [ ] Fast Gated DeltaNet on NVIDIA through flash-linear-attention ([#31](https://github.com/exea-labs/ExeaLM/issues/31))
 - [ ] Recurrent state cache, so generating a token doesn't re-read the whole context
-- [ ] `torch.compile` support
+- [ ] `torch.compile` support. `exealm.train.pretrain --compile 1` compiles the model once the search has frozen the architecture; untested on a GPU, and `experiments/throughput.py --compile 1` measures what it buys
 - [x] Training-speed benchmark: the default 2:1 hybrid costs 1.01x a same-size Llama per token, 1.49x with retrieval on (pure TONN was 1.5x) ([results](results/README.md#5-speed-of-the-real-model-experimentsspeedpy), `experiments/speed.py`)
 - [x] (starter) Generation speed: `python -m exealm.eval.speed` times training and generation tokens per second against a same-size Llama
 - [ ] (GPU) Run the tests and a short training run on an MI300X and report what breaks
+- [ ] (GPU) Run `python experiments/gpu_check.py` on an NVIDIA GPU: every circuit type and each whole model on the GPU against the CPU, in 32-bit and bf16, then training, resume and two processes
 
 ### Data ([DATA.md](DATA.md), `exealm/data/`)
 - [ ] Download and stage every DATA.md source: parallel, resumable, checksummed (build and test it on samples)
@@ -340,7 +341,8 @@ Starting points. Almost everything here runs on a laptop or a free Google Colab 
 - [ ] Final special tokens: chat roles, agent roles, board
 
 ### Training (`exealm/train/pretrain.py`)
-- [ ] Multi-GPU: DDP, then FSDP (DDP is testable on a CPU with two processes) ([#17](https://github.com/exea-labs/ExeaLM/issues/17))
+- [ ] Multi-GPU: DDP, then FSDP ([#17](https://github.com/exea-labs/ExeaLM/issues/17)). The DDP part is written (`torchrun --nproc_per_node 4 -m exealm.train.pretrain`, `exealm/train/multi.py`): averaged gradients, the search and checkpoints on process 0, a resumed run identical to an uninterrupted one. Tested with two processes on a CPU; **(GPU)** not yet run on real GPUs
+- [x] Gradient accumulation (`--accum`), checkpoints on the clock (`--save_minutes`) and a clean stop before a job's time limit (`--max_minutes`, or SIGUSR1/SIGTERM)
 - [x] Exact resume from checkpoints (`--save_every`, `--stop_at`, `--resume auto`)
 - [x] Weights & Biases logging (`--wandb PROJECT` in `exealm.train.pretrain`; a resumed run continues the same W&B run)
 - [ ] Context extension near the end of training
