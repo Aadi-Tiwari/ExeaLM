@@ -29,9 +29,13 @@ show this, because moving a tensor to the device it is already on returns the sa
 tokens, so the model has 73.5M parameters instead of 94.3M. bf16, fused AdamW, swarms of 4 with the board on, no
 datastore.
 
-| GPUs | Tokens per step | Tokens per second, steps 51 to 100 | Peak memory, GPU 0 | Processes in sync |
-|---|---|---|---|---|
-| 1 | 16,384 | 39,252 | 11.8 GB | |
-| 2 | 32,768 | 73,058 | 11.8 GB | yes, at both evaluations |
+| GPUs | Tokens per step | Tokens per second, steps 51 to 100 | Steps 101 to 150 | Peak memory, GPU 0 | Processes in sync |
+|---|---|---|---|---|---|
+| 1 | 16,384 | 39,252 | 39,322 | 11.8 GB | |
+| 2 | 32,768 | 73,058 | 73,060 | 11.8 GB | yes, at all three evaluations |
 
-Two A40s train 1.86 times as many tokens per second as one. On one GPU the rate for steps 101 to 150 was 39,322.
+Two A40s train 1.86 times as many tokens per second as one.
+
+The same command with `--preset 500m --batch 16` on one A40 (456.5M parameters with the 256-token corpus): 10,245
+tokens per second over steps 51 to 100 and a peak of 23.1 GB. The machine was stopped before that run's last 50
+steps and before its two-GPU partner, the throughput script and its compile and TF32 switches had run.
