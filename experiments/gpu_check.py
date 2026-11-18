@@ -53,7 +53,7 @@ def gap(a, b):
 
 def run(fn, x, dev, bf16=False):
     """fn's output for x on dev and the gradient of its squared mean with respect to x."""
-    x = x.to(dev).requires_grad_(True)
+    x = x.detach().clone().to(dev).requires_grad_(True)       # a fresh leaf on dev, whatever the caller did with x
     with torch.autocast(device_type=dev.type, dtype=torch.bfloat16) if bf16 else torch.enable_grad():
         y = fn(x)
     y.float().pow(2).mean().backward()
