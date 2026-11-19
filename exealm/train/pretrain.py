@@ -22,8 +22,13 @@ without changing the learning-rate schedule, for sessions with a time limit such
     python -m exealm.train.pretrain --preset small --data data/packed/train --steps 20000 --save_every 500 \
         --stop_at 5000 --resume auto      # run the same line again in the next session to continue
 
-Single GPU only for now.
-  TODO(infra): multi-GPU (DDP first, then FSDP), with the datastore search sharded across GPUs.
+Several processes (DistributedDataParallel): start the same command with torchrun, one process per GPU (NCCL), or
+several on a CPU (gloo). --batch stays the total over all processes: every process draws the same batch and keeps its
+own rows, whole swarms only, so N processes train on exactly the data one process would. Process 0 runs the search,
+evaluates, logs and saves; after every search round the others copy its circuits, weights and optimizer state, and
+after every datastore refresh its keys. --resume auto works the same way.
+    torchrun --nproc_per_node 2 -m exealm.train.pretrain --preset tiny --data synthetic --steps 300 --device cpu
+  TODO(infra): FSDP, and the datastore search sharded across GPUs (every process holds the whole datastore today).
   TODO(infra): torch.compile.
 
 --wandb PROJECT also sends every eval, search and resume record to Weights & Biases (pip install wandb). A resumed run
