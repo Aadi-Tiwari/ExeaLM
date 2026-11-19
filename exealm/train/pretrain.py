@@ -56,6 +56,62 @@ def pick_device(name):
     return torch.device("cpu")
 
 
+def dist_setup(dev):
+    """Several processes (torchrun sets WORLD_SIZE, RANK and LOCAL_RANK): join the process group, with one GPU per
+    process on CUDA (NCCL) or gloo on the CPU. Returns (rank, number of processes, device); a plain run gives
+    (0, 1, dev)."""
+    world = int(os.environ.get("WORLD_SIZE", "1"))
+    if world == 1:
+        return 0, 1, dev
+    import torch.distributed as dist
+    if dev.type == "cuda":
+        dev = torch.device("cuda", int(os.environ.get("LOCAL_RANK", "0")))
+        torch.cuda.set_device(dev)
+    elif dev.type != "cpu":
+        raise ValueError(f"several processes run on CUDA or the CPU, not on {dev.type}")
+    if not dist.is_initialized():
+        dist.init_process_group("nccl" if dev.type == "cuda" else "gloo")
+    return dist.get_rank(), dist.get_world_size(), dev
+
+
+def broadcast_(t, dev):
+    """Overwrite t with process 0's copy (tensors that live off the device, such as Adam's step, go through it)."""
+    import torch.distributed as dist
+    if t.device == dev:
+        dist.broadcast(t, src=0)
+    else:
+        buf = t.to(dev)
+        dist.broadcast(buf, src=0)
+        t.copy_(buf)
+
+
+@torch.no_grad()
+def sync_from_rank0(model, opt, dev):
+    """After process 0 ran a search round: every process takes its circuits, then its weights, buffers and optimizer
+    state. A replaced slot gets fresh random weights and cleared Adam rows on process 0 only, so copying is what keeps
+    all processes training one and the same model."""
+    import torch.distributed as dist
+    box = [model.specs]
+    dist.broadcast_object_list(box, src=0)
+    for lay, row in zip(model.layers, box[0]):
+        for k, spec in enumerate(row):
+            if spec != lay.specs[k]:
+                lay.set_spec(k, spec)
+    for t in list(model.parameters()) + list(model.buffers()):
+        broadcast_(t.data, dev)
+    params = list(model.parameters())
+    shape = [[(n, tuple(v.shape)) for n, v in opt.state[p].items() if torch.is_tensor(v)] if p in opt.state else []
+             for p in params]
+    box = [shape]
+    dist.broadcast_object_list(box, src=0)
+    if box[0] != shape:
+        raise RuntimeError("the optimizer state differs between processes; they no longer train the same model")
+    for p in params:
+        for v in (opt.state[p].values() if p in opt.state else ()):
+            if torch.is_tensor(v):
+                broadcast_(v, dev)
+
+
 def lr_at(step, total, peak, warmup, decay_frac, floor=0.1):
     """Warmup-stable-decay (WSD): linear warmup, flat, then a linear decay over the last decay_frac of training.
     WSD lets us branch off the flat part to try a different final data mix without restarting (docs/training.md)."""
