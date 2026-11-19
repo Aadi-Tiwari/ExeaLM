@@ -219,7 +219,7 @@ def main(argv=None):
     a = ap.parse_args(argv)
 
     torch.manual_seed(a.seed)
-    dev = pick_device(a.device)
+    rank, world, dev = dist_setup(pick_device(a.device))
     amp = dict(device_type="cuda", dtype=torch.bfloat16) if dev.type == "cuda" else None
     data = open_data(a.data)
     val = data if a.val is None else open_data(a.val)
@@ -250,6 +250,10 @@ def main(argv=None):
         opt.load_state_dict(ck["opt"])
     warmup = a.warmup if a.warmup is not None else max(1, min(2000, a.steps // 20))
     swarm = cfg.swarm_size if a.model == "tonn" else 1
+    if world > 1 and a.batch % (world * swarm):
+        raise ValueError(f"--batch {a.batch} is the total over {world} processes and must split into whole swarms of "
+                         f"{swarm}: use a multiple of {world * swarm}")
+    per = a.batch // world                                              # rows each process trains on
     rng = np.random.default_rng(a.seed)
 
     ds = None
@@ -264,6 +268,8 @@ def main(argv=None):
             raise ValueError("--data is a mix or has many shards: name the retrieval library with --datastore_data")
         ds = ds.to(dev)
         ds.refresh(model.encoder, model.emb, step=0)
+        if world > 1:
+            broadcast_(ds.keys, dev)                                    # every process searches the same keys
 
     def mem_for(docs):
         return MemoryContext(datastore=ds, doc_ids=docs.to(dev), swarm_size=swarm)
@@ -314,10 +320,10 @@ def main(argv=None):
         return out
 
     os.makedirs(a.out, exist_ok=True)
-    log = open(os.path.join(a.out, "log.jsonl"), "a")
+    log = open(os.path.join(a.out, "log.jsonl"), "a") if rank == 0 else None     # process 0 logs for all of them
 
     run = None
-    if a.wandb:
+    if a.wandb and rank == 0:
         import wandb
         id_file = os.path.join(a.out, "wandb_id.txt")                    # so a resumed run continues the same W&B run
         run_id = open(id_file).read().strip() if resume and os.path.exists(id_file) else None
@@ -327,6 +333,8 @@ def main(argv=None):
             f.write(str(run.id))
 
     def emit(rec):
+        if rank:
+            return
         print(json.dumps(rec), flush=True)
         log.write(json.dumps(rec) + "\n")
         log.flush()
@@ -360,43 +368,76 @@ def main(argv=None):
                   saved_total_steps=st["total_steps"]))
     else:
         emit(dict(event="start", model=a.model, params=count_params(model), device=str(dev), cfg=asdict(cfg),
-                  architecture=model.architecture() if a.model == "tonn" else None))
+                  architecture=model.architecture() if a.model == "tonn" else None,
+                  **(dict(processes=world) if world > 1 else {})))
+    net = model                                                         # what trains; model itself evaluates and saves
+    if world > 1:
+        import torch.distributed as dist
+        from torch.nn.parallel import DistributedDataParallel
+        net = DistributedDataParallel(model, device_ids=[dev.index] if dev.type == "cuda" else None,
+                                      find_unused_parameters=True)     # e.g. RG slots read nothing without a library
     t0 = time.time() - done_secs
     for step in range(start, a.steps):
-        if searcher is not None:
-            rec = searcher.maybe_round(model, opt, step, a.steps, sel_batches, a.seq)
+        if searcher is not None and searcher.due(step, a.steps):
+            rec = searcher.maybe_round(model, opt, step, a.steps, sel_batches, a.seq) if rank == 0 else None
+            if world > 1:
+                sync_from_rank0(model, opt, dev)
             if rec:
                 emit(dict(event="search", **rec))
         if ds is not None and step > 0 and step % a.refresh_every == 0:
             ds.refresh(model.encoder, model.emb, step=step)
+            if world > 1:
+                broadcast_(ds.keys, dev)
         for g in opt.param_groups:
             g["lr"] = lr_at(step, a.steps, a.lr, warmup, a.decay_frac)
         x, y, d = data.batch(a.batch, a.seq, rng, swarm, a.swarm_policy)
+        if world > 1:                                                   # this process's rows: whole swarms only
+            x, y, d = x[rank * per:(rank + 1) * per], y[rank * per:(rank + 1) * per], d[rank * per:(rank + 1) * per]
         x, y = x.to(dev), y.to(dev)
         with torch.autocast(**amp) if amp else torch.enable_grad():
-            loss = model(x, mem_for(d), y)[1]
+            loss = net(x, mem_for(d), y)[1]
+        mean = loss.detach()
+        if world > 1:
+            # Each process's loss is a mean over its own targets, and DDP averages gradients over processes. Weighting
+            # by each process's share of the targets makes the update the one a single process would take on the
+            # whole batch, even when masked seam targets make the shares unequal.
+            n = (y != -100).sum().float()
+            tot = torch.stack([n, mean.float() * n])
+            dist.all_reduce(tot)
+            mean = tot[1] / tot[0]                                      # the whole batch's loss, for the log
+            loss = loss * (n * world / tot[0])
         opt.zero_grad(set_to_none=True)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), a.clip)
         opt.step()
-        losses.append(loss.detach())
+        losses.append(mean)
         if (step + 1) % a.eval_every == 0 or step + 1 == a.steps:
-            rec = dict(event="eval", step=step + 1, train_loss=round(float(torch.stack(losses).mean()), 4),
-                       lr=round(opt.param_groups[0]["lr"], 6), secs=round(time.time() - t0, 1), **evaluate())
+            if rank == 0:
+                rec = dict(event="eval", step=step + 1, train_loss=round(float(torch.stack(losses).mean()), 4),
+                           lr=round(opt.param_groups[0]["lr"], 6), secs=round(time.time() - t0, 1), **evaluate())
+                emit(rec)
             losses = []
-            emit(rec)
-        if step + 1 < a.steps and ((a.save_every and (step + 1) % a.save_every == 0) or step + 1 == a.stop_at):
+        if rank == 0 and step + 1 < a.steps and (
+                (a.save_every and (step + 1) % a.save_every == 0) or step + 1 == a.stop_at):
             save(ckpt_path, model, opt, step + 1, cfg, a.model, train_state(losses, time.time() - t0))
         if step + 1 == a.stop_at and step + 1 < a.steps:
             emit(dict(event="stop", step=step + 1, ckpt=ckpt_path))
             if run is not None:
                 run.finish()
+            if world > 1:
+                dist.barrier()                                          # the checkpoint is written before anyone exits
+                dist.destroy_process_group()
             return model
     if a.model == "tonn":
         emit(dict(event="end", architecture=model.architecture()))
-    save(os.path.join(a.out, "model.pt"), model, opt, a.steps, cfg, a.model, train_state(losses, time.time() - t0))
+    if rank == 0:
+        save(os.path.join(a.out, "model.pt"), model, opt, a.steps, cfg, a.model,
+             train_state(losses, time.time() - t0))
     if run is not None:
         run.finish()
+    if world > 1:
+        dist.barrier()
+        dist.destroy_process_group()
     return model
 
 
