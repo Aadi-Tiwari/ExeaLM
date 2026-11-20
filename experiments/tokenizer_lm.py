@@ -45,7 +45,11 @@ def bits_per_byte(model, val, a, dev):
 def train_step(model, opt, x, y, dev, accum=1, amp="none"):
     """One optimizer step on the batch x, y, run as `accum` equal micro-batches with about 1/accum of the activation
     memory. No target is masked here, so the mean of the micro-batch losses is the batch loss and the gradient is the
-    same, except that TONN's running slot scale (TONNLayer._unit_scale) updates once per micro-batch. Returns the loss."""
+    same, except through TONN's running slot scale (TONNLayer._unit_scale), which updates once per micro-batch: later
+    micro-batches are divided by a scale that already includes the earlier ones. The difference is largest on a step
+    where a slot has no scale yet (the first step), when only the first micro-batch is divided by 1. Returns the loss."""
+    if accum < 1 or x.shape[0] % accum:
+        raise ValueError(f"a batch of {x.shape[0]} does not split into {accum} equal micro-batches")
     opt.zero_grad(set_to_none=True)
     total = 0.0
     for xs, ys in zip(x.chunk(accum), y.chunk(accum)):
@@ -141,7 +145,8 @@ def main():
     ap.add_argument("--seq", type=int, default=512)
     ap.add_argument("--accum", type=int, default=1, help="run each batch as this many equal micro-batches, for GPUs too "
                     "small for the whole batch (32 x 512 on the 13M hybrid needs about 9 GB; 2 fits an 8 GB card). Same "
-                    "tokens and gradient, but TONN's running slot scale updates once per micro-batch, so not bit-identical")
+                    "tokens; same gradient except through TONN's running slot scale, which updates once per micro-batch "
+                    "(see train_step), so results differ a little from one whole batch")
     ap.add_argument("--lr", type=float, default=2e-3)
     ap.add_argument("--optimizer", default="adamw", choices=["adamw", "muon"], help="muon: Muon for the weight matrices, "
                     "AdamW for the rest, at the same --lr (exealm/train/muon.py)")
@@ -156,7 +161,7 @@ def main():
     ap.add_argument("--out", default="results/tokenizer")
     a = ap.parse_args()
     if a.accum < 1 or a.batch % a.accum:
-        ap.error("--batch must be a multiple of --accum")
+        ap.error("--accum must be at least 1 and divide --batch")
     dev = pick_device(a.device)
     os.makedirs(a.out, exist_ok=True)
     rows = []
