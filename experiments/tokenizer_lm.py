@@ -36,9 +36,26 @@ def bits_per_byte(model, val, a, dev):
     nll = 0.0
     for _ in range(a.eval_batches):
         x, y, _ = val.batch(a.batch, a.seq, rng)
-        nll += float(model(x.to(dev), MemoryContext(), y.to(dev))[1])
+        nll += sum(float(model(xs.to(dev), MemoryContext(), ys.to(dev))[1])
+                   for xs, ys in zip(x.chunk(a.accum), y.chunk(a.accum))) / a.accum
     model.train()
     return round(nll / a.eval_batches / math.log(2) / val.meta["bytes_per_token"], 4)
+
+
+def train_step(model, opt, x, y, dev, accum=1, amp="none"):
+    """One optimizer step on the batch x, y, run as `accum` equal micro-batches with about 1/accum of the activation
+    memory. No target is masked here, so the mean of the micro-batch losses is the batch loss and the gradient is the
+    same, except that TONN's running slot scale (TONNLayer._unit_scale) updates once per micro-batch. Returns the loss."""
+    opt.zero_grad(set_to_none=True)
+    total = 0.0
+    for xs, ys in zip(x.chunk(accum), y.chunk(accum)):
+        with torch.autocast(device_type=dev.type, dtype=torch.bfloat16) if amp == "bf16" else torch.enable_grad():
+            loss = model(xs.to(dev), MemoryContext(), ys.to(dev))[1] / accum
+        loss.backward()
+        total += float(loss.detach())
+    torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+    opt.step()
+    return total
 
 
 def run(tok, a, dev, kind="tonn", seed=0):
@@ -90,14 +107,9 @@ def run(tok, a, dev, kind="tonn", seed=0):
         if searcher is not None:
             searcher.maybe_round(model, opt, step, total, sel, a.seq)
         x, y, _ = train.batch(a.batch, a.seq, rng)
-        with torch.autocast(device_type=dev.type, dtype=torch.bfloat16) if a.amp == "bf16" else torch.enable_grad():
-            loss = model(x.to(dev), MemoryContext(), y.to(dev))[1]
-        opt.zero_grad(set_to_none=True)
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-        opt.step()
+        loss = train_step(model, opt, x, y, dev, a.accum, a.amp)
         bytes_seen += a.batch * a.seq * train.meta["bytes_per_token"]
-        recent.append(float(loss.detach()))
+        recent.append(loss)
         if (step + 1) % 250 == 0:                          # training-loss curve (spikes show instability)
             curve.append(round(sum(recent) / len(recent), 4))
             recent = []
@@ -127,6 +139,9 @@ def main():
     ap.add_argument("--seconds", type=float, default=0, help="equal compute: set the step count to fill this many seconds")
     ap.add_argument("--batch", type=int, default=32)
     ap.add_argument("--seq", type=int, default=512)
+    ap.add_argument("--accum", type=int, default=1, help="run each batch as this many equal micro-batches, for GPUs too "
+                    "small for the whole batch (32 x 512 on the 13M hybrid needs about 9 GB; 2 fits an 8 GB card). Same "
+                    "tokens and gradient, but TONN's running slot scale updates once per micro-batch, so not bit-identical")
     ap.add_argument("--lr", type=float, default=2e-3)
     ap.add_argument("--optimizer", default="adamw", choices=["adamw", "muon"], help="muon: Muon for the weight matrices, "
                     "AdamW for the rest, at the same --lr (exealm/train/muon.py)")
@@ -140,6 +155,8 @@ def main():
     ap.add_argument("--device", default="auto")
     ap.add_argument("--out", default="results/tokenizer")
     a = ap.parse_args()
+    if a.accum < 1 or a.batch % a.accum:
+        ap.error("--batch must be a multiple of --accum")
     dev = pick_device(a.device)
     os.makedirs(a.out, exist_ok=True)
     rows = []
