@@ -62,6 +62,16 @@ def train_step(model, opt, x, y, dev, accum=1, amp="none"):
     return total
 
 
+def selection_batches(train, a, dev, seed):
+    """The search's 4 selection batches, each cut into `a.accum` equal pieces: the worth pass has no gradients but still
+    holds a whole batch of logits, so uncut it can need more memory than the training step --accum made fit.
+    group_worth averages the per-piece losses, so equal pieces give the same worth as whole batches."""
+    srng = np.random.default_rng(20_000 + seed)
+    return [(xs.to(dev), ys.to(dev), MemoryContext())
+            for x, y, _ in (train.batch(a.batch, a.seq, srng) for _ in range(4))
+            for xs, ys in zip(x.chunk(a.accum), y.chunk(a.accum))]
+
+
 def run(tok, a, dev, kind="tonn", seed=0):
     root = os.path.join(a.root, tok)
     train = MultiShards([os.path.join(root, t) for t in a.train.split(",")], weights=[float(w) for w in a.mix.split(",")])
@@ -89,8 +99,7 @@ def run(tok, a, dev, kind="tonn", seed=0):
     searcher, sel = None, None
     if kind.endswith("_search"):
         searcher = Searcher(every=250, until=0.5, seed=seed)
-        srng = np.random.default_rng(20_000 + seed)
-        sel = [(x.to(dev), y.to(dev), MemoryContext()) for x, y, _ in (train.batch(a.batch, a.seq, srng) for _ in range(4))]
+        sel = selection_batches(train, a, dev, seed)
     opt = make_optimizer(model, a.lr, 0.1, a.optimizer)
     rng = np.random.default_rng(seed)
     t0, bytes_seen, curve, recent = time.time(), 0.0, [], []
