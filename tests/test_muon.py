@@ -32,6 +32,23 @@ def test_muon_step_has_about_the_rms_of_an_adamw_update():
         assert 0.15 < float(p.detach().pow(2).mean().sqrt()) < 0.22
 
 
+@pytest.mark.skipif(not hasattr(torch.optim, "Muon"), reason="torch.optim.Muon needs a recent PyTorch")
+@pytest.mark.parametrize("shape", [(768, 256), (256, 680), (64, 64)])
+def test_muon_groups_take_the_same_steps_as_torch_muon(shape):
+    torch.manual_seed(0)
+    w = torch.randn(*shape) * 0.02
+    a, b = torch.nn.Parameter(w.clone()), torch.nn.Parameter(w.clone())
+    ours = Muon([dict(params=[a], use_muon=True, weight_decay=0.1)], lr=2e-3)
+    ref = torch.optim.Muon([b], lr=2e-3, weight_decay=0.1, adjust_lr_fn="match_rms_adamw")
+    for _ in range(5):
+        a.grad = torch.randn(*shape)
+        b.grad = a.grad.clone()
+        ours.step()
+        ref.step()
+    assert (a - w).abs().max() > 1e-3                                         # the weights really moved
+    assert torch.allclose(a, b, atol=1e-7, rtol=0)
+
+
 def test_groups_without_muon_take_the_same_steps_as_torch_adamw():
     torch.manual_seed(0)
     init = [torch.randn(5, 3), torch.randn(7)]
