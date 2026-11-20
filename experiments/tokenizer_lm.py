@@ -70,7 +70,7 @@ def run(tok, a, dev, kind="tonn", seed=0):
         searcher = Searcher(every=250, until=0.5, seed=seed)
         srng = np.random.default_rng(20_000 + seed)
         sel = [(x.to(dev), y.to(dev), MemoryContext()) for x, y, _ in (train.batch(a.batch, a.seq, srng) for _ in range(4))]
-    opt = make_optimizer(model, a.lr, 0.1)
+    opt = make_optimizer(model, a.lr, 0.1, a.optimizer)
     rng = np.random.default_rng(seed)
     t0, bytes_seen, curve, recent = time.time(), 0.0, [], []
     total = a.steps
@@ -104,8 +104,8 @@ def run(tok, a, dev, kind="tonn", seed=0):
         if dev.type == "mps" and step % 200 == 0:
             torch.mps.empty_cache()
         step += 1
-    rec = dict(model=kind, tag=a.tag, cfg=a.cfg if kind != "llama" else "{}", lr=a.lr, seed=seed, tokenizer=tok,
-               vocab=int(train.meta["vocab_size"]), params_M=round(count_params(model) / 1e6, 2),
+    rec = dict(model=kind, tag=a.tag, cfg=a.cfg if kind != "llama" else "{}", lr=a.lr, optimizer=a.optimizer, seed=seed,
+               tokenizer=tok, vocab=int(train.meta["vocab_size"]), params_M=round(count_params(model) / 1e6, 2),
                steps=total, seconds_budget=a.seconds, amp=a.amp, train=a.train, tokens_seen=total * a.batch * a.seq, bytes_seen=int(bytes_seen),
                secs=round(time.time() - t0, 1),
                bits_per_byte={v[4:]: bits_per_byte(model, s, a, dev) for v, s in vals.items()},
@@ -128,6 +128,8 @@ def main():
     ap.add_argument("--batch", type=int, default=32)
     ap.add_argument("--seq", type=int, default=512)
     ap.add_argument("--lr", type=float, default=2e-3)
+    ap.add_argument("--optimizer", default="adamw", choices=["adamw", "muon"], help="muon: Muon for the weight matrices, "
+                    "AdamW for the rest, at the same --lr (exealm/train/muon.py)")
     ap.add_argument("--eval_batches", type=int, default=16)
     ap.add_argument("--models", default="tonn", help="any of tonn, tonn_core, tonn_core_search, llama")
     ap.add_argument("--seeds", default="0")
