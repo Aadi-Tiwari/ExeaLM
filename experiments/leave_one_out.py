@@ -147,6 +147,7 @@ def main():
     ap.add_argument("--rss_gb", type=float, default=1.5, help="memory a run is expected to need, until one has been measured")
     ap.add_argument("--lock", default="")
     ap.add_argument("--who", default="leave-one-out-runner")
+    ap.add_argument("--abort_if_first_over", type=float, default=0.0, help="minutes: stop the queue if the first run takes longer")
     ap.add_argument("--retries", type=int, default=6)
     ap.add_argument("--dry_run", action="store_true")
     ap.add_argument("--one", nargs=2, metavar=("CONFIG", "SEED"), help="internal: run a single pair in this process")
@@ -209,6 +210,9 @@ def main():
                 durations.append(time.time() - t0)
                 rss_gb = max(rss_gb, row["peak_rss_mb"] / 1024)
                 log(f"done {n} seed {s} in {mins:.1f} min: mean bpb {sum(row['bits_per_byte'].values()) / 4:.4f} {row['bits_per_byte']}")
+                if a.abort_if_first_over and len(durations) == 1 and mins > a.abort_if_first_over:
+                    log(f"first run took more than {a.abort_if_first_over:g} min: queue not continued")
+                    return
                 break
             log(f"FAILED {n} seed {s} after {mins:.1f} min (exit {p.returncode}{', low memory' if low else ''}); see logs/leave_one_out/{n}_seed{s}.log")
             time.sleep(60)
