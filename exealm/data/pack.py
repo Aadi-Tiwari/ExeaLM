@@ -80,7 +80,7 @@ def pack(files, tokenizer, out, max_docs=None, max_bytes=None, batch=1000):
     np.save(os.path.join(out, "offsets.npy"), np.array(offsets, dtype=np.int64))
     meta = dict(dtype=np.dtype(dtype).name, vocab_size=V, n_tokens=n_tok, n_docs=len(offsets),
                 bytes_per_token=n_bytes / max(1, n_tok), tokenizer=tokenizer, files=[os.path.basename(f) for f in files])
-    json.dump(meta, open(os.path.join(out, "meta.json"), "w"), indent=2)
+    json.dump(meta, open(os.path.join(out, "meta.json"), "w", encoding="utf-8", newline="\n"), indent=2)
     print(json.dumps(meta))
     return meta
 
