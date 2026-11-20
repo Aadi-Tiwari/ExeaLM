@@ -19,6 +19,8 @@ import os
 
 import numpy as np
 
+from .files import expand
+
 
 def iter_texts(files):
     for path in files:
@@ -93,6 +95,7 @@ def main():
     ap.add_argument("--max_docs", type=int, default=None)
     ap.add_argument("--max_bytes", type=float, default=None)
     a = ap.parse_args()
+    a.files = expand(a.files)
     pack(a.files, a.tokenizer, a.out, a.max_docs, a.max_bytes)
 
 
