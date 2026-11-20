@@ -1,11 +1,16 @@
 """Build the token packs the 13M experiments read, from public text, when the private packs are not available.
 
-Expects the raw jsonl.gz files of exealm.data.download (English: FineWeb-Edu; Japanese: LLM-jp ja_wiki and
-ja_fineweb-2; code: LLM-jp code_stack) and writes <out>/{train_en,train_ja,train_code,val_en,val_ja_wiki,val_ja_web,val_code}.
+Reads <raw>/{en,ja_wiki,ja_web,code}.jsonl.gz and writes
+<out>/{train_en,train_ja,train_code,val_en,val_ja_wiki,val_ja_web,val_code}.
 The last --val_mb megabytes of each held-out source become its validation split, so no document is in both.
 
-python experiments/leave_one_out_data.py --en data/raw/en.jsonl.gz --ja_wiki data/raw/ja_wiki.jsonl.gz \
-    --ja_web data/raw/ja_web.jsonl.gz --code data/raw/code.jsonl.gz --tokenizer results/tokenizer/bpe32k --out data/tokpack/bpe32k
+--fetch downloads the raw files that are missing (`pip install datasets`): FineWeb-Edu sample-10BT (English),
+Wikipedia 20231101.ja and FineWeb-2 jpn_Jpan (Japanese), codeparrot-clean (Python code). If --tokenizer does not
+exist, it also downloads the project's 32k tokenizer from https://huggingface.co/exea-labs/ExeaLM (`pip install
+huggingface_hub`). These are stand-ins for the private packs behind results/funding, so compare runs built from
+them with each other, not with those numbers.
+
+python experiments/leave_one_out_data.py --fetch --raw data/raw --out data/tokpack/bpe32k
 """
 import argparse
 import gzip
@@ -66,10 +71,14 @@ def main():
     a = ap.parse_args()
     os.makedirs(a.raw, exist_ok=True)
     raw = {k: os.path.join(a.raw, k + ".jsonl.gz") for k in SOURCES}
+    tokenizer = a.tokenizer
     if a.fetch:
         for k, path in raw.items():
             if not os.path.exists(path):
                 fetch(k, path)
+        if not os.path.exists(tokenizer):
+            from exealm.hub import TOKENIZER, _download
+            tokenizer = _download(TOKENIZER)
     tmp = os.path.join(a.out, "_split")
     os.makedirs(tmp, exist_ok=True)
     en_tr, en_va = split(read(raw["en"]), a.val_mb)
@@ -81,7 +90,7 @@ def main():
     for name, docs in parts.items():
         f = os.path.join(tmp, name + ".jsonl.gz")
         write(docs, f)
-        pack([f], a.tokenizer, os.path.join(a.out, name))
+        pack([f], tokenizer, os.path.join(a.out, name))
 
 
 if __name__ == "__main__":
