@@ -16,8 +16,8 @@ two optimizers with each other, not with the numbers in results/funding.
 
 The batch of 32 does not fit an 8 GB card at this size (it needs about 9 GB), so every run here uses `--accum 2`:
 each batch runs as two halves of 16. Each step sees the same tokens. The gradient is the same except through TONN's
-running slot scale, which updates once per half, and most on the first step, when only the first half is divided by
-an unmeasured scale. Both optimizers ran the same way. How much the split moves a score on its own is measured in
+running slot scale, which updates once per half: on the first step the second half is divided by the first half's
+measured size instead of 1, and after that the running average moves twice per step. Both optimizers ran the same way. How much the split moves a score on its own is measured in
 "Does --accum change the result?" below.
 
 ## Results
@@ -44,9 +44,10 @@ results/funding (section 1, "no rotary attention in the starting menu") have a s
 byte.
 
 At each one's best rate, Muon had lower bits per byte than AdamW on both seeds, by 0.017 on seed 0 and 0.030 on
-seed 1, and it was lower on all four kinds of text in both. That gap is about three times the seed-to-seed spread
-above. It is still two seeds at one size (13M), on stand-in data and with `--accum 2`, so it does not show what
-happens at 0.1B or on the real packs.
+seed 1, and it was lower on all four kinds of text in both. Both gaps are bigger than the seed-to-seed spread
+above (2.3 and 4.2 times it). That spread comes from other data at lr 2e-3, and a difference between two runs
+varies more than one run does, so it is only a rough yardstick. It is still two seeds at one size (13M), on
+stand-in data and with `--accum 2`, so it does not show what happens at 0.1B or on the real packs.
 
 AdamW was best at 4e-3 here. results/funding trains this model with AdamW at 2e-3, which was 0.018 worse than 4e-3
 on seed 0 with this data.
