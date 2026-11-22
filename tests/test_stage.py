@@ -370,3 +370,25 @@ def test_to_jsonl_refuses_a_k2_folder_without_a_verified_formatter(tmp_path):
     (tmp_path / "manifest.jsonl").write_text(json.dumps({"path": path}) + "\n", encoding="utf-8")
     with pytest.raises(ValueError, match="No verified K2 formatter"):
         st.to_jsonl(str(tmp_path), str(tmp_path / "raw"), log=lambda s: None)
+
+
+def test_busy_api_answers_are_retried_after_the_wait_they_ask_for(monkeypatch):
+    import io
+    import urllib.error
+
+    from exealm.data import download
+    answers, slept = [429, 503, None], []
+
+    def urlopen(req, timeout):
+        code = answers.pop(0)
+        if code:
+            raise urllib.error.HTTPError("u", code, "busy", {"Retry-After": "7"} if code == 429 else {}, None)
+        return io.BytesIO(b'[{"type": "blob", "path": "ja/ja_wiki/0000.jsonl.gz"}]')
+
+    monkeypatch.setattr(download.urllib.request, "urlopen", urlopen)
+    monkeypatch.setattr(download.time, "sleep", slept.append)
+    assert download.get_json("u", wait=1.0) == [{"type": "blob", "path": "ja/ja_wiki/0000.jsonl.gz"}]
+    assert slept == [7.0, 2.0]                     # Retry-After when given, else wait * 2 ** try
+    answers[:] = [404]
+    with pytest.raises(urllib.error.HTTPError):
+        download.get_json("u")

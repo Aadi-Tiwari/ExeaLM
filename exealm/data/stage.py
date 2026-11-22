@@ -40,7 +40,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 
-from .download import llmjp_files
+from .download import get_json, llmjp_files
 from .sources import K2, LLMJP, LLMJP_RAW, MIX_V0
 
 LLMJP_GRAPHQL = "https://gitlab.llm-jp.nii.ac.jp/api/graphql"
@@ -180,10 +180,8 @@ def stage(items, out, workers=4, retries=3, rehash=False, opener=_open, log=prin
     return res
 
 
-def _post_json(url, body, timeout=60):
-    req = urllib.request.Request(url, json.dumps(body).encode(), {"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        return json.load(r)
+def _post_json(url, body):
+    return get_json(urllib.request.Request(url, json.dumps(body).encode(), {"Content-Type": "application/json"}))
 
 
 def llmjp_items(subset, max_files=None, list_files=llmjp_files, post=_post_json, batch=50):
