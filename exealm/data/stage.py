@@ -115,6 +115,8 @@ def fetch(item, out, retries=3, rehash=False, opener=_open, block=1 << 20, wait=
                             f.write(b)
                             h.update(b)
                             have += len(b)
+                            if have > item.size:                # already wrong: the check below fails it
+                                break
                             if stop is not None and stop.is_set():
                                 raise Stopped(item.path)
                 if have < item.size:                           # read(n) ends quietly when the connection drops

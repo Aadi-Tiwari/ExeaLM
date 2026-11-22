@@ -1,5 +1,6 @@
 import gzip
 import hashlib
+import io
 import json
 import os
 import random
@@ -439,6 +440,23 @@ def test_a_manifest_line_cut_short_is_skipped_and_its_file_checked_again(server,
     assert [p for p, _ in server.requests] == ["/b.jsonl"]
     assert read(tmp_path / "sub" / "b.jsonl") == blob(20_000, 41)
     assert [e["path"] for e in st._manifest(str(man))] == ["sub/a.jsonl", "sub/b.jsonl"]
+
+
+def test_a_body_longer_than_published_stops_once_it_passes_the_size(tmp_path):
+    reads = []
+
+    class Body(io.BytesIO):
+        status, headers = 200, {}
+
+        def read1(self, n=-1):
+            reads.append(n)
+            return super().read1(n)
+
+    it = Item("test", "sub/long.jsonl", "u", 1000, hashlib.sha256(b"x" * 1000).hexdigest())
+    with pytest.raises(CheckError):
+        fetch(it, str(tmp_path), opener=lambda url, start: Body(b"x" * 5_000_000), block=1 << 16)
+    assert len(reads) <= 2                                       # not the whole 5 MB
+    assert not os.path.exists(tmp_path / "sub" / "long.jsonl.part")
 
 
 def test_ctrl_c_stops_the_running_files_and_drops_the_queued_ones(server, tmp_path):
