@@ -14,7 +14,8 @@ file is checked against them. A file is written to `<name>.part` and gets its fi
 sha256 match, so a file under its final name is complete. Stop at any point and run the same command again: finished
 files are skipped, partial files continue where they stopped (from the start if the server ignores byte ranges), and
 a file that fails its check is deleted so the next run fetches it fresh. `manifest.jsonl` in --out lists every
-finished file with its source, url, size and sha256. Hugging Face files are pinned to the dataset's commit at
+finished file with its source, url, size and sha256; a file it does not list with that sha256 is hashed before it
+is skipped. Hugging Face files are pinned to the dataset's commit at
 planning time.
 
 --max_files, --max_gb and --max_tokens cap each source on its own. A capped source keeps files spread evenly through
@@ -154,7 +155,8 @@ def _missing_bytes(items, out):
 
 def stage(items, out, workers=4, retries=3, rehash=False, opener=_open, log=print):
     """Fetch every item into out, `workers` files at a time, and add each finished file to out/manifest.jsonl. A file
-    whose sha256 differs from its last manifest line is checked and fetched again. A failed file does not stop the
+    already on disk is trusted on its size only when its last manifest line has the same sha256; any other file is
+    checked by sha256 and fetched again if it does not match. A failed file does not stop the
     others. Returns {"got": n, "have": n, "failed": [(path, error), ...]}."""
     paths = [it.path for it in items]
     if len(set(paths)) != len(paths):
@@ -177,9 +179,9 @@ def stage(items, out, workers=4, retries=3, rehash=False, opener=_open, log=prin
     stop = threading.Event()
 
     def one(it):
-        new_version = listed.get(it.path, it.sha256) != it.sha256       # the size alone cannot tell
+        unchecked = listed.get(it.path) != it.sha256    # a new version, or a file this folder never checked
         try:
-            status = fetch(it, out, retries, rehash or new_version, opener, stop=stop)
+            status = fetch(it, out, retries, rehash or unchecked, opener, stop=stop)
         except Stopped:
             return
         except Exception as e:                          # report it and let the other files finish

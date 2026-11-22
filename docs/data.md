@@ -95,7 +95,9 @@ python -m exealm.train.pretrain --preset small --data data/packed/train --val da
 `exealm.data.stage` downloads the files of an LLM-jp path or a Hugging Face dataset as they are on the host. Both
 hosts keep the files in Git LFS, which publishes each file's size and sha256, and a file only gets its final name
 once both match. Stop it at any point and run the same command again: finished files are skipped and partial ones
-continue from the byte they stopped at. `manifest.jsonl` in the output folder lists every finished file.
+continue from the byte they stopped at. `manifest.jsonl` in the output folder lists every finished file. A file in
+the folder that the manifest does not list with the same sha256 (copied in by hand, or the manifest was deleted) is
+hashed before it counts as finished.
 
 ```bash
 python -m exealm.data.stage --mix v0 --max_files 1 --plan_only       # file count and size of every source, no download

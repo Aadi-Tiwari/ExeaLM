@@ -411,6 +411,21 @@ def test_a_new_version_of_a_file_is_fetched_even_at_the_same_size(server, tmp_pa
     assert [json.loads(line)["sha256"] for line in lines] == [it_old.sha256, it_new.sha256]
 
 
+def test_a_file_the_manifest_does_not_list_is_checked_before_it_counts(server, tmp_path):
+    data = blob(20_000, 30)
+    it = add(server, "u.jsonl", data)
+    good = add(server, "g.jsonl", blob(20_000, 31))
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "sub" / "u.jsonl").write_bytes(blob(20_000, 32))     # right size, wrong bytes, no manifest line
+    (tmp_path / "sub" / "g.jsonl").write_bytes(blob(20_000, 31))     # right bytes, no manifest line
+    res = st.stage([it, good], str(tmp_path), workers=1, log=lambda s: None)
+    assert res == {"got": 1, "have": 1, "failed": []}
+    assert read(tmp_path / "sub" / "u.jsonl") == data
+    assert [p for p, _ in server.requests] == ["/u.jsonl"]
+    lines = (tmp_path / "manifest.jsonl").read_text(encoding="utf-8").splitlines()
+    assert sorted(json.loads(line)["path"] for line in lines) == ["sub/g.jsonl", "sub/u.jsonl"]
+
+
 def test_ctrl_c_stops_the_running_files_and_drops_the_queued_ones(server, tmp_path):
     import _thread
     items = [add(server, f"slow{i}.jsonl", blob(400_000, 30 + i)) for i in range(4)]
