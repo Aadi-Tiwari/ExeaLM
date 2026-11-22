@@ -225,15 +225,34 @@ def spread(xs, k=None):
     return [xs[i * n // k] for i in range(k)]
 
 
+def _coarse_to_fine(n):
+    """Every index below n, in the order the first, the middle, the quarters, the eighths and so on reach them."""
+    order, seen, k = [], set(), 1
+    while len(order) < n:
+        for i in spread(range(n), k):
+            if i not in seen:
+                seen.add(i)
+                order.append(i)
+        k *= 2
+    return order
+
+
 def cap(items, max_files=None, max_bytes=None):
-    """At most max_files of the items and at most max_bytes in all (but at least one file), spread through the list."""
+    """At most max_files of the items and at most max_bytes in all (but at least one file), spread through the list.
+    Under a byte cap, files are tried coarse to fine through the list and each one that still fits is kept, so a few
+    large files do not crowd out the rest."""
     k = len(items) if max_files is None else min(max_files, len(items))
-    total = sum(it.size for it in items)
-    if max_bytes is not None and total > max_bytes:
-        k = min(k, max(1, int(len(items) * max_bytes / total)))
-        while k > 1 and sum(it.size for it in spread(items, k)) > max_bytes:
-            k -= 1
-    return spread(items, k)
+    if max_bytes is None or not items:
+        return spread(items, k)
+    order = _coarse_to_fine(len(items))
+    keep, used = [], 0
+    for i in order:
+        if len(keep) == k:
+            break
+        if used + items[i].size <= max_bytes:
+            keep.append(i)
+            used += items[i].size
+    return [items[i] for i in sorted(keep or order[:1])]
 
 
 def plan(sources, max_files=None, max_gb=None, max_tokens=None, llmjp=llmjp_items, hf=hf_items, log=print):

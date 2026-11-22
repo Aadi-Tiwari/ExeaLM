@@ -289,12 +289,22 @@ def test_spread_keeps_files_from_the_whole_list():
 
 def test_cap_by_bytes_stays_under_the_budget_and_keeps_one_file():
     items = sized([10] * 10)
-    assert [it.path for it in cap(items, max_bytes=35)] == ["p00", "p03", "p06"]
+    assert [it.path for it in cap(items, max_bytes=35)] == ["p00", "p02", "p05"]     # first, middle, a quarter
     uneven = sized([5, 50, 5, 50, 5, 50])
     assert sum(it.size for it in cap(uneven, max_bytes=60)) <= 60
     assert len(cap(items, max_bytes=1)) == 1                 # smaller than any file: still one file
     assert cap(items, max_files=2, max_bytes=1000) == [items[0], items[5]]
     assert cap(items, max_bytes=10_000) == items
+    one_big = sized([1] * 9 + [91])                          # an average-size guess would keep 5 files here
+    assert [it.size for it in cap(one_big, max_bytes=50)] == [1] * 9
+    mixed = sized([1] * 30 + [8] * 9)                          # like en_dolma/pes2o: 30 small files, then 9 large
+    assert sum(it.size for it in cap(mixed, max_bytes=8)) == 8
+
+
+def test_coarse_to_fine_reaches_every_index_once():
+    assert st._coarse_to_fine(10) == [0, 5, 2, 7, 1, 3, 6, 8, 4, 9]
+    for n in (1, 2, 7, 39):
+        assert sorted(st._coarse_to_fine(n)) == list(range(n))
 
 
 def test_token_cap_uses_the_published_count(monkeypatch):
@@ -307,7 +317,7 @@ def test_token_cap_uses_the_published_count(monkeypatch):
     monkeypatch.setitem(st.LLMJP, "ja/ja_wiki", (1, "CC BY-SA 3.0"))        # 1B tokens in 1,000 bytes
     items = plan(["ja/ja_wiki"], max_tokens=0.3, llmjp=llmjp)
     assert calls == [None]                                    # sizes of every file, then the cap
-    assert [it.path for it in items] == ["p00", "p03", "p06"]
+    assert [it.path for it in items] == ["p00", "p02", "p05"]
     items = plan(["ja/ja_wiki"], max_tokens=0.3, max_gb=2e-7, llmjp=llmjp)
     assert len(items) == 2                                    # the smaller of the two caps wins
     notes = []
