@@ -103,6 +103,8 @@ def fetch(item, out, retries=3, rehash=False, opener=_open, block=1 << 20, wait=
         os.remove(part)
         have = 0
     h = _sha256(part) if have else hashlib.sha256()
+    if not item.size:                                   # nothing to download, but the rename below needs the file
+        open(part, "wb").close()
     for attempt in range(retries + 1):
         try:
             if have < item.size:

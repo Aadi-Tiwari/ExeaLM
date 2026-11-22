@@ -459,6 +459,13 @@ def test_a_body_longer_than_published_stops_once_it_passes_the_size(tmp_path):
     assert not os.path.exists(tmp_path / "sub" / "long.jsonl.part")
 
 
+def test_an_empty_file_is_staged_without_a_request(tmp_path):
+    it = Item("test", "sub/empty.jsonl", "u", 0, hashlib.sha256(b"").hexdigest())
+    assert fetch(it, str(tmp_path), opener=lambda url, start: pytest.fail("no request needed")) == "got"
+    assert read(tmp_path / "sub" / "empty.jsonl") == b""
+    assert fetch(it, str(tmp_path), opener=lambda url, start: pytest.fail("no request needed")) == "have"
+
+
 def test_ctrl_c_stops_the_running_files_and_drops_the_queued_ones(server, tmp_path):
     import _thread
     items = [add(server, f"slow{i}.jsonl", blob(400_000, 30 + i)) for i in range(4)]
