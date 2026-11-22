@@ -20,8 +20,14 @@ planning time.
 --max_files, --max_gb and --max_tokens cap each source on its own. A capped source keeps files spread evenly through
 its sorted list. --max_tokens needs a published token count (LLM-jp's, in sources.LLMJP) and turns it into bytes with
 that source's bytes per token. LLM-jp counted with its own tokenizer, so the cap is an estimate.
+
+LLM-jp files are already jsonl.gz with a `text` field. Hugging Face files stay as the host has them (parquet for K2);
+`--to_jsonl DIR` turns the staged parquet files into the jsonl.gz files the rest of the data scripts read:
+
+    python -m exealm.data.stage --out data/stage --to_jsonl data/raw
 """
 import argparse
+import gzip
 import hashlib
 import http.client
 import json
@@ -35,7 +41,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 
 from .download import llmjp_files
-from .sources import LLMJP, LLMJP_RAW, MIX_V0
+from .sources import K2, LLMJP, LLMJP_RAW, MIX_V0
 
 LLMJP_GRAPHQL = "https://gitlab.llm-jp.nii.ac.jp/api/graphql"
 LLMJP_PROJECT = "datasets/llm-jp-corpus-v4"
@@ -279,6 +285,45 @@ def plan(sources, max_files=None, max_gb=None, max_tokens=None, llmjp=llmjp_item
     return items
 
 
+def to_jsonl(staged, out, batch=1000, log=print):
+    """Turn the staged Hugging Face parquet files listed in staged/manifest.jsonl into jsonl.gz files of {"text",
+    "source"} in out: the format download.py writes and quality.py reads. K2 subsets go through their verified
+    formatters (rows without text are dropped, and K2 reads only the text column); other datasets use
+    download.extract_text. Finished files are skipped. Returns {output file: documents written} for this run."""
+    import pyarrow.parquet as pq
+
+    from .download import extract_text
+    from .formatters import get_k2_formatter
+    with open(os.path.join(staged, "manifest.jsonl"), encoding="utf-8") as f:
+        entries = [json.loads(line) for line in f if line.strip()]
+    os.makedirs(out, exist_ok=True)
+    written = {}
+    for e in entries:
+        parts = e["path"].split("/")
+        if parts[0] != "hf" or not e["path"].endswith(".parquet"):
+            continue
+        repo, subset = "/".join(parts[1:3]), (parts[3] if len(parts) > 4 else None)
+        k2 = repo in K2
+        fmt = get_k2_formatter(repo, subset) if k2 else extract_text
+        dst = os.path.join(out, "hf__" + "__".join(parts[1:])[:-len(".parquet")] + ".jsonl.gz")
+        if os.path.exists(dst):
+            log(f"have {dst}")
+            continue
+        source, n = (f"{repo}/{subset}" if subset else repo), 0
+        rows = pq.ParquetFile(os.path.join(staged, *parts)).iter_batches(batch, columns=["text"] if k2 else None)
+        with gzip.open(dst + ".part", "wt", encoding="utf-8") as fo:
+            for b in rows:
+                for row in b.to_pylist():
+                    text = fmt(row)
+                    if text:
+                        fo.write(json.dumps({"text": text, "source": source}, ensure_ascii=False) + "\n")
+                        n += 1
+        os.replace(dst + ".part", dst)
+        written[dst] = n
+        log(f"wrote {n} documents to {dst}")
+    return written
+
+
 def mix_sources(name):
     if name == "v0":
         return list(MIX_V0)
@@ -299,7 +344,12 @@ def main(argv=None):
     ap.add_argument("--retries", type=int, default=3)
     ap.add_argument("--rehash", action="store_true", help="re-check the sha256 of finished files, fetch failures again")
     ap.add_argument("--plan_only", action="store_true", help="print the files and sizes, download nothing")
+    ap.add_argument("--to_jsonl", default=None, metavar="DIR",
+                    help="instead of downloading, turn the parquet files staged in --out into jsonl.gz files in DIR")
     a = ap.parse_args(argv)
+    if a.to_jsonl:
+        to_jsonl(a.out, a.to_jsonl)
+        return
     sources = a.source + (mix_sources(a.mix) if a.mix else [])
     if not sources:
         ap.error("give --source or --mix")

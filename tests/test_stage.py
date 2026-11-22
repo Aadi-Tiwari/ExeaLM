@@ -1,3 +1,4 @@
+import gzip
 import hashlib
 import json
 import os
@@ -330,3 +331,42 @@ def test_token_cap_without_a_published_count_is_refused():
         plan(["IFM/TxT360-v2"], max_tokens=1, hf=lambda s, n: pytest.fail("refuse before listing"))
     with pytest.raises(SystemExit, match="max_gb"):
         plan(["ja/ja_cc/level0"], max_tokens=1, llmjp=lambda s, n: pytest.fail("refuse before listing"))
+
+
+def write_parquet(path, columns):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    pq.write_table(pa.table(columns), path, row_group_size=2)
+
+
+def test_to_jsonl_formats_staged_parquet_and_skips_the_rest(tmp_path):
+    staged, out = tmp_path / "stage", tmp_path / "raw"
+    k2 = "hf/IFM/TxT360-v2/txt360-qa/part-0.parquet"
+    other = "hf/org/qa-set/data/train.parquet"
+    write_parquet(str(staged / k2), {"text": ["first doc", None, "", "  ", "second doc\nline 2"],
+                                     "meta": ["a", "b", "c", "d", "e"]})
+    write_parquet(str(staged / other), {"question": ["What is 2+2?"], "answer": ["4"]})
+    with open(staged / "manifest.jsonl", "w", encoding="utf-8") as f:
+        for path in (k2, other, "llm-jp-v4/ja/ja_wiki/0000.jsonl.gz", "hf/IFM/TxT360-v2/README.md"):
+            f.write(json.dumps({"source": "x", "path": path, "url": "u", "size": 1, "sha256": "0"}) + "\n")
+    logs = []
+    written = st.to_jsonl(str(staged), str(out), batch=2, log=logs.append)
+    k2_out = out / "hf__IFM__TxT360-v2__txt360-qa__part-0.jsonl.gz"
+    other_out = out / "hf__org__qa-set__data__train.jsonl.gz"
+    assert written == {str(k2_out): 2, str(other_out): 1}
+    with gzip.open(k2_out, "rt", encoding="utf-8") as f:
+        assert [json.loads(line) for line in f] == [{"text": "first doc", "source": "IFM/TxT360-v2/txt360-qa"},
+                                                    {"text": "second doc\nline 2", "source": "IFM/TxT360-v2/txt360-qa"}]
+    with gzip.open(other_out, "rt", encoding="utf-8") as f:
+        assert [json.loads(line) for line in f] == [{"text": "What is 2+2?\n\n4", "source": "org/qa-set/data"}]
+    assert sorted(os.listdir(out)) == sorted([k2_out.name, other_out.name])
+    assert st.to_jsonl(str(staged), str(out), log=logs.append) == {}          # a rerun converts nothing
+
+
+def test_to_jsonl_refuses_a_k2_folder_without_a_verified_formatter(tmp_path):
+    path = "hf/IFM/TxT360-v2/new-subset/part-0.parquet"
+    write_parquet(str(tmp_path / path), {"text": ["doc"]})
+    (tmp_path / "manifest.jsonl").write_text(json.dumps({"path": path}) + "\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="No verified K2 formatter"):
+        st.to_jsonl(str(tmp_path), str(tmp_path / "raw"), log=lambda s: None)
