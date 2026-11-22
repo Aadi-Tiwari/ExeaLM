@@ -142,6 +142,21 @@ def fetch(item, out, retries=3, rehash=False, opener=_open, block=1 << 20, wait=
     return "got"
 
 
+def _manifest(path):
+    """The records in a manifest file, oldest first. A line cut short (the run was killed while writing it) is
+    skipped, so its file counts as unlisted and gets hashed again by stage()."""
+    if not os.path.exists(path):
+        return []
+    recs = []
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            try:
+                recs.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+    return recs
+
+
 def _missing_bytes(items, out):
     n = 0
     for it in items:
@@ -166,13 +181,12 @@ def stage(items, out, workers=4, retries=3, rehash=False, opener=_open, log=prin
     if need > free:
         raise SystemExit(f"{need / 1e9:.1f} GB still to download but only {free / 1e9:.1f} GB free in {out}")
     man = os.path.join(out, "manifest.jsonl")
-    listed = {}                                         # path -> sha256 of its last manifest line
-    if os.path.exists(man):
-        with open(man, encoding="utf-8") as f:
-            for line in f:
-                if line.strip():
-                    rec = json.loads(line)
-                    listed[rec["path"]] = rec["sha256"]
+    listed = {rec["path"]: rec["sha256"] for rec in _manifest(man)}    # path -> sha256 of its last manifest line
+    if os.path.exists(man) and os.path.getsize(man):
+        with open(man, "rb+") as f:
+            f.seek(-1, os.SEEK_END)
+            if f.read(1) != b"\n":                      # end a line cut short so the next line is not glued to it
+                f.write(b"\n")
     lock = threading.Lock()
     res = {"got": 0, "have": 0, "failed": []}
 
@@ -322,8 +336,7 @@ def to_jsonl(staged, out, batch=1000, log=print):
 
     from .download import extract_text
     from .formatters import get_k2_formatter
-    with open(os.path.join(staged, "manifest.jsonl"), encoding="utf-8") as f:
-        entries = list({e["path"]: e for e in map(json.loads, filter(str.strip, f))}.values())    # last line wins
+    entries = list({e["path"]: e for e in _manifest(os.path.join(staged, "manifest.jsonl"))}.values())  # last wins
     os.makedirs(out, exist_ok=True)
     written = {}
     for e in entries:

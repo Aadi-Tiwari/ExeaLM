@@ -426,6 +426,21 @@ def test_a_file_the_manifest_does_not_list_is_checked_before_it_counts(server, t
     assert sorted(json.loads(line)["path"] for line in lines) == ["sub/g.jsonl", "sub/u.jsonl"]
 
 
+def test_a_manifest_line_cut_short_is_skipped_and_its_file_checked_again(server, tmp_path):
+    a, b = add(server, "a.jsonl", blob(20_000, 40)), add(server, "b.jsonl", blob(20_000, 41))
+    st.stage([a, b], str(tmp_path), workers=1, log=lambda s: None)
+    man = tmp_path / "manifest.jsonl"
+    text = man.read_text(encoding="utf-8")
+    man.write_text(text[:-20], encoding="utf-8")                     # killed while writing b's line
+    (tmp_path / "sub" / "b.jsonl").write_bytes(blob(20_000, 42))     # and b's bytes are wrong
+    server.requests.clear()
+    res = st.stage([a, b], str(tmp_path), workers=1, log=lambda s: None)
+    assert res == {"got": 1, "have": 1, "failed": []}
+    assert [p for p, _ in server.requests] == ["/b.jsonl"]
+    assert read(tmp_path / "sub" / "b.jsonl") == blob(20_000, 41)
+    assert [e["path"] for e in st._manifest(str(man))] == ["sub/a.jsonl", "sub/b.jsonl"]
+
+
 def test_ctrl_c_stops_the_running_files_and_drops_the_queued_ones(server, tmp_path):
     import _thread
     items = [add(server, f"slow{i}.jsonl", blob(400_000, 30 + i)) for i in range(4)]
