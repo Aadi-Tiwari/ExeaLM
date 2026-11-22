@@ -256,7 +256,7 @@ Starting points. Almost everything here runs on a laptop or a free Google Colab 
 - [ ] A relay built from real text (one agent reads a paragraph, another answers about it), to compare the board and weight-alter outside the toy task
 - [x] Agent identity: opt-in learned author signals on board posts ([usage](docs/memory.md#agent-identity))
 - [ ] Retrieval division of labor: do agents in a swarm pull different chunks? Try rewarding it
-- [ ] Swarm-aware multi-GPU training, keeping each swarm on one GPU (testable on a CPU with two processes)
+- [x] Swarm-aware multi-GPU training, keeping each swarm on one GPU: every process trains whole swarms ([#17](https://github.com/exea-labs/ExeaLM/issues/17), [docs/training.md](docs/training.md))
 - [ ] Swarm SFT data: split-information tasks built from multi-hop QA. This also fills the "tool use and agentic" gap in [DATA.md](DATA.md)
 - [x] Swarm SFT loop: loss on the answering agent, trained through the board (tested on the `tiny` preset, [usage](docs/swarms.md#swarm-sft))
 - [ ] Swarm RL (GRPO): whole-swarm attempts with a shared reward (test on the `tiny` preset)
@@ -342,7 +342,8 @@ Starting points. Almost everything here runs on a laptop or a free Google Colab 
 - [ ] Final special tokens: chat roles, agent roles, board
 
 ### Training (`exealm/train/pretrain.py`)
-- [ ] Multi-GPU: DDP, then FSDP (DDP is testable on a CPU with two processes) ([#17](https://github.com/exea-labs/ExeaLM/issues/17))
+- [x] Multi-GPU with DDP: `torchrun --nproc_per_node N -m exealm.train.pretrain ...`; two CPU processes match one process on the same total batch ([#17](https://github.com/exea-labs/ExeaLM/issues/17), [docs/training.md](docs/training.md))
+- [ ] FSDP, and the datastore search sharded across GPUs
 - [x] Exact resume from checkpoints (`--save_every`, `--stop_at`, `--resume auto`)
 - [x] Weights & Biases logging (`--wandb PROJECT` in `exealm.train.pretrain`; a resumed run continues the same W&B run)
 - [ ] Context extension near the end of training
