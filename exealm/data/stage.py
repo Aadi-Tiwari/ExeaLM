@@ -5,6 +5,8 @@ its host publishes.
     python -m exealm.data.stage --source ja/ja_wiki --max_files 2 --out data/stage
     python -m exealm.data.stage --source IFM/TxT360-v2/txt360-qa --max_files 1 --workers 4
     python -m exealm.data.stage --mix v0 --max_files 1 --plan_only          # one file of every source in mix v0
+    python -m exealm.data.stage --source en/en_wiki --max_tokens 0.5        # about 0.5B tokens of it
+    python -m exealm.data.stage --source IFM/TxT360-v2 --max_gb 20          # at most 20 GB of it
 
 A source is an LLM-jp Corpus v4 path (the keys of sources.LLMJP) or a Hugging Face dataset, "org/name" or
 "org/name/folder". Both hosts keep the data files in Git LFS, which publishes each file's sha256 and size, so every
@@ -14,6 +16,10 @@ files are skipped, partial files continue where they stopped (from the start if 
 a file that fails its check is deleted so the next run fetches it fresh. `manifest.jsonl` in --out lists every
 finished file with its source, url, size and sha256. Hugging Face files are pinned to the dataset's commit at
 planning time.
+
+--max_files, --max_gb and --max_tokens cap each source on its own. A capped source keeps files spread evenly through
+its sorted list. --max_tokens needs a published token count (LLM-jp's, in sources.LLMJP) and turns it into bytes with
+that source's bytes per token. LLM-jp counted with its own tokenizer, so the cap is an estimate.
 """
 import argparse
 import hashlib
@@ -177,7 +183,7 @@ def _post_json(url, body, timeout=60):
 def llmjp_items(subset, max_files=None, list_files=llmjp_files, post=_post_json, batch=50):
     """The files of one LLM-jp sub-corpus, with the size and sha256 of each from GitLab's GraphQL API (one request per
     `batch` files)."""
-    files = [f for f in list_files(subset) if f.endswith(DATA_SUFFIXES)][:max_files]
+    files = spread([f for f in list_files(subset) if f.endswith(DATA_SUFFIXES)], max_files)
     items = []
     for i in range(0, len(files), batch):
         paths = files[i:i + batch]
@@ -207,14 +213,50 @@ def hf_items(source, max_files=None, api=None):
         if lfs and f.path.endswith(DATA_SUFFIXES):
             url = f"https://huggingface.co/datasets/{repo}/resolve/{sha}/{f.path}"
             items.append(Item(source, f"hf/{repo}/{f.path}", url, int(lfs.size), lfs.sha256))
-    return sorted(items, key=lambda it: it.path)[:max_files]
+    return spread(sorted(items, key=lambda it: it.path), max_files)
 
 
-def plan(sources, max_files=None, llmjp=llmjp_items, hf=hf_items):
-    """Items for each source, max_files per source."""
+def spread(xs, k=None):
+    """k of the xs, evenly spaced through the list (all of them when k is None or at least len(xs)), so a sample
+    covers the whole source and not only the start of its sorted file list."""
+    n = len(xs)
+    if k is None or k >= n:
+        return list(xs)
+    return [xs[i * n // k] for i in range(k)]
+
+
+def cap(items, max_files=None, max_bytes=None):
+    """At most max_files of the items and at most max_bytes in all (but at least one file), spread through the list."""
+    k = len(items) if max_files is None else min(max_files, len(items))
+    total = sum(it.size for it in items)
+    if max_bytes is not None and total > max_bytes:
+        k = min(k, max(1, int(len(items) * max_bytes / total)))
+        while k > 1 and sum(it.size for it in spread(items, k)) > max_bytes:
+            k -= 1
+    return spread(items, k)
+
+
+def plan(sources, max_files=None, max_gb=None, max_tokens=None, llmjp=llmjp_items, hf=hf_items, log=print):
+    """Items for each source. Each cap applies to every source on its own: max_files files, max_gb gigabytes, or
+    max_tokens billion tokens. A token cap needs a published token count (sources.LLMJP); it is turned into bytes with
+    the source's own bytes per token. A file is never split, so a source whose smallest step is over its cap keeps one
+    file, and the plan says so."""
     items = []
     for s in sources:
-        items += llmjp(s, max_files) if s in LLMJP else hf(s, max_files)
+        get = llmjp if s in LLMJP else hf
+        if max_gb is None and max_tokens is None:
+            items += get(s, max_files)
+            continue
+        if max_tokens is not None and not LLMJP.get(s, (None,))[0]:
+            raise SystemExit(f"no published token count for {s}; cap it with --max_gb instead")
+        got = get(s, None)
+        limits = [max_gb * 1e9] if max_gb is not None else []
+        if max_tokens is not None:
+            limits.append(max_tokens / LLMJP[s][0] * sum(it.size for it in got))
+        kept = cap(got, max_files, min(limits))
+        if sum(it.size for it in kept) > min(limits):
+            log(f"note: {s} keeps one file of {kept[0].size / 1e9:.2f} GB, over its cap of {min(limits) / 1e9:.2f} GB")
+        items += kept
     return items
 
 
@@ -230,6 +272,9 @@ def main(argv=None):
                     help="an LLM-jp path or a Hugging Face dataset (org/name or org/name/folder); can repeat")
     ap.add_argument("--mix", choices=["v0"], help="every source of a mix in sources.py (mix v0 names its sources)")
     ap.add_argument("--max_files", type=int, default=None, help="at most this many files per source (a sample)")
+    ap.add_argument("--max_gb", type=float, default=None, help="at most this many GB per source")
+    ap.add_argument("--max_tokens", type=float, default=None,
+                    help="at most about this many billion tokens per source (LLM-jp: from its published counts)")
     ap.add_argument("--out", default="data/stage")
     ap.add_argument("--workers", type=int, default=4, help="files downloaded at once")
     ap.add_argument("--retries", type=int, default=3)
@@ -242,7 +287,7 @@ def main(argv=None):
     unknown = [s for s in sources if s not in LLMJP and s.split("/")[0] in ("ja", "en", "ko", "zh", "code")]
     if unknown:
         ap.error(f"not an LLM-jp path in sources.LLMJP: {', '.join(unknown)}")
-    items = plan(sources, a.max_files)
+    items = plan(sources, a.max_files, a.max_gb, a.max_tokens)
     for s in sources:
         mine = [it for it in items if it.source == s]
         print(f"{s:36s} {len(mine):6d} files {sum(it.size for it in mine) / 1e9:10.2f} GB")

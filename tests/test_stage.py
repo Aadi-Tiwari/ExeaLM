@@ -11,7 +11,7 @@ from types import SimpleNamespace
 import pytest
 
 from exealm.data import stage as st
-from exealm.data.stage import CheckError, Item, fetch, hf_items, llmjp_items, plan
+from exealm.data.stage import CheckError, Item, cap, fetch, hf_items, llmjp_items, plan, spread
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -216,7 +216,7 @@ def test_llmjp_plan_reads_sizes_and_sha256_in_batches():
 
     items = llmjp_items("ja/ja_wiki", max_files=5, list_files=lambda s: files, post=post, batch=2)
     assert [len(c) for c in calls] == [2, 2, 1]
-    assert [it.size for it in items] == [1000, 1001, 1002, 1003, 1004]
+    assert [it.size for it in items] == [1000, 1001, 1002, 1004, 1005]        # 5 of 7, spread through the list
     assert items[0] == Item("ja/ja_wiki", "llm-jp-v4/ja/ja_wiki/0000.jsonl.gz",
                             st.LLMJP_RAW + "ja/ja_wiki/0000.jsonl.gz", 1000, "0000" * 16)
 
@@ -264,7 +264,7 @@ def test_plan_sends_each_source_to_its_host():
 def test_command_line_plan_only_prints_totals_and_downloads_nothing(monkeypatch, capsys):
     items = [Item("ja/ja_wiki", f"llm-jp-v4/ja/ja_wiki/{i}.jsonl.gz", "http://x", 2_000_000_000, "0" * 64)
              for i in range(3)]
-    monkeypatch.setattr(st, "plan", lambda sources, n: items)
+    monkeypatch.setattr(st, "plan", lambda sources, *caps: items)
     monkeypatch.setattr(st, "stage", lambda *a, **k: pytest.fail("plan_only must not download"))
     st.main(["--source", "ja/ja_wiki", "--plan_only"])
     out = capsys.readouterr().out.splitlines()
@@ -272,6 +272,51 @@ def test_command_line_plan_only_prints_totals_and_downloads_nothing(monkeypatch,
 
 
 def test_command_line_refuses_a_mistyped_llmjp_path(monkeypatch):
-    monkeypatch.setattr(st, "plan", lambda sources, n: pytest.fail("no planning for a bad path"))
+    monkeypatch.setattr(st, "plan", lambda sources, *caps: pytest.fail("no planning for a bad path"))
     with pytest.raises(SystemExit):
         st.main(["--source", "ja/ja_wikii", "--plan_only"])
+
+
+def sized(sizes, source="ja/ja_wiki"):
+    return [Item(source, f"p{i:02d}", "http://x", n, "0" * 64) for i, n in enumerate(sizes)]
+
+
+def test_spread_keeps_files_from_the_whole_list():
+    assert spread(list(range(10)), 3) == [0, 3, 6]
+    assert spread(list(range(10)), 10) == list(range(10)) == spread(list(range(10)))
+    assert spread(list(range(4)), 0) == []
+
+
+def test_cap_by_bytes_stays_under_the_budget_and_keeps_one_file():
+    items = sized([10] * 10)
+    assert [it.path for it in cap(items, max_bytes=35)] == ["p00", "p03", "p06"]
+    uneven = sized([5, 50, 5, 50, 5, 50])
+    assert sum(it.size for it in cap(uneven, max_bytes=60)) <= 60
+    assert len(cap(items, max_bytes=1)) == 1                 # smaller than any file: still one file
+    assert cap(items, max_files=2, max_bytes=1000) == [items[0], items[5]]
+    assert cap(items, max_bytes=10_000) == items
+
+
+def test_token_cap_uses_the_published_count(monkeypatch):
+    calls = []
+
+    def llmjp(s, n):
+        calls.append(n)
+        return sized([100] * 10, s)
+
+    monkeypatch.setitem(st.LLMJP, "ja/ja_wiki", (1, "CC BY-SA 3.0"))        # 1B tokens in 1,000 bytes
+    items = plan(["ja/ja_wiki"], max_tokens=0.3, llmjp=llmjp)
+    assert calls == [None]                                    # sizes of every file, then the cap
+    assert [it.path for it in items] == ["p00", "p03", "p06"]
+    items = plan(["ja/ja_wiki"], max_tokens=0.3, max_gb=2e-7, llmjp=llmjp)
+    assert len(items) == 2                                    # the smaller of the two caps wins
+    notes = []
+    items = plan(["ja/ja_wiki"], max_tokens=0.3, llmjp=lambda s, n: sized([3_000_000_000], s), log=notes.append)
+    assert len(items) == 1 and notes == ["note: ja/ja_wiki keeps one file of 3.00 GB, over its cap of 0.90 GB"]
+
+
+def test_token_cap_without_a_published_count_is_refused():
+    with pytest.raises(SystemExit, match="max_gb"):
+        plan(["IFM/TxT360-v2"], max_tokens=1, hf=lambda s, n: pytest.fail("refuse before listing"))
+    with pytest.raises(SystemExit, match="max_gb"):
+        plan(["ja/ja_cc/level0"], max_tokens=1, llmjp=lambda s, n: pytest.fail("refuse before listing"))
