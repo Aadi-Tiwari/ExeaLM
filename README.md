@@ -349,7 +349,7 @@ Starting points. Almost everything here runs on a laptop or a free Google Colab 
 - [x] Exact resume from checkpoints (`--save_every`, `--stop_at`, `--resume auto`)
 - [x] Weights & Biases logging (`--wandb PROJECT` in `exealm.train.pretrain`; a resumed run continues the same W&B run)
 - [ ] Context extension near the end of training
-- [ ] Optimizer: Muon vs AdamW (`small` preset) ([#21](https://github.com/exea-labs/ExeaLM/issues/21))
+- [x] Optimizer: Muon vs AdamW (`small` preset): `--optimizer muon`. At 13M both did best at lr 4e-3, where Muon was 0.017 and 0.030 bits per byte lower than AdamW on two seeds, on public stand-in data. Not tried at 0.1B yet, so AdamW stays the default ([#21](https://github.com/exea-labs/ExeaLM/issues/21), [results/muon](results/muon/README.md))
 - [ ] Multi-token prediction heads (`small` preset)
 - [ ] Learning-rate transfer from small models (μP): tune on `tiny`/`small`, carry over to 0.1B
 - [x] (starter) Budget sheet: GPU-hours per run, checkpoint cadence, what we can afford ([docs/budget.md](docs/budget.md))
