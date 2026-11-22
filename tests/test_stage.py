@@ -392,3 +392,14 @@ def test_busy_api_answers_are_retried_after_the_wait_they_ask_for(monkeypatch):
     answers[:] = [404]
     with pytest.raises(urllib.error.HTTPError):
         download.get_json("u")
+
+
+def test_a_new_version_of_a_file_is_fetched_even_at_the_same_size(server, tmp_path):
+    old, new = blob(20_000, 20), blob(20_000, 21)
+    it_old = add(server, "v.jsonl", old)
+    st.stage([it_old], str(tmp_path), log=lambda s: None)
+    it_new = add(server, "v.jsonl", new)                       # same path and size, new sha256 on the host
+    assert st.stage([it_new], str(tmp_path), log=lambda s: None)["got"] == 1
+    assert read(tmp_path / "sub" / "v.jsonl") == new
+    lines = (tmp_path / "manifest.jsonl").read_text(encoding="utf-8").splitlines()
+    assert [json.loads(line)["sha256"] for line in lines] == [it_old.sha256, it_new.sha256]

@@ -142,8 +142,9 @@ def _missing_bytes(items, out):
 
 
 def stage(items, out, workers=4, retries=3, rehash=False, opener=_open, log=print):
-    """Fetch every item into out, `workers` files at a time, and add each finished file to out/manifest.jsonl. A failed
-    file does not stop the others. Returns {"got": n, "have": n, "failed": [(path, error), ...]}."""
+    """Fetch every item into out, `workers` files at a time, and add each finished file to out/manifest.jsonl. A file
+    whose sha256 differs from its last manifest line is checked and fetched again. A failed file does not stop the
+    others. Returns {"got": n, "have": n, "failed": [(path, error), ...]}."""
     paths = [it.path for it in items]
     if len(set(paths)) != len(paths):
         raise ValueError("two items have the same path")
@@ -152,16 +153,20 @@ def stage(items, out, workers=4, retries=3, rehash=False, opener=_open, log=prin
     if need > free:
         raise SystemExit(f"{need / 1e9:.1f} GB still to download but only {free / 1e9:.1f} GB free in {out}")
     man = os.path.join(out, "manifest.jsonl")
-    listed = set()
+    listed = {}                                         # path -> sha256 of its last manifest line
     if os.path.exists(man):
         with open(man, encoding="utf-8") as f:
-            listed = {json.loads(line)["path"] for line in f if line.strip()}
+            for line in f:
+                if line.strip():
+                    rec = json.loads(line)
+                    listed[rec["path"]] = rec["sha256"]
     lock = threading.Lock()
     res = {"got": 0, "have": 0, "failed": []}
 
     def one(it):
+        new_version = listed.get(it.path, it.sha256) != it.sha256       # the size alone cannot tell
         try:
-            status = fetch(it, out, retries, rehash, opener)
+            status = fetch(it, out, retries, rehash or new_version, opener)
         except Exception as e:                          # report it and let the other files finish
             with lock:
                 res["failed"].append((it.path, f"{type(e).__name__}: {e}"))
@@ -169,10 +174,10 @@ def stage(items, out, workers=4, retries=3, rehash=False, opener=_open, log=prin
             return
         with lock:
             res[status] += 1
-            if it.path not in listed:
+            if listed.get(it.path) != it.sha256:
                 with open(man, "a", encoding="utf-8") as f:
                     f.write(json.dumps(asdict(it), ensure_ascii=False) + "\n")
-                listed.add(it.path)
+                listed[it.path] = it.sha256
         log(f"{status} {it.path} ({it.size / 1e6:.1f} MB)")
 
     with ThreadPoolExecutor(max(1, workers)) as ex:
@@ -293,7 +298,7 @@ def to_jsonl(staged, out, batch=1000, log=print):
     from .download import extract_text
     from .formatters import get_k2_formatter
     with open(os.path.join(staged, "manifest.jsonl"), encoding="utf-8") as f:
-        entries = [json.loads(line) for line in f if line.strip()]
+        entries = list({e["path"]: e for e in map(json.loads, filter(str.strip, f))}.values())    # last line wins
     os.makedirs(out, exist_ok=True)
     written = {}
     for e in entries:
