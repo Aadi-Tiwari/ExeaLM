@@ -37,7 +37,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, wait
 from dataclasses import asdict, dataclass
 
 from .download import get_json, llmjp_files
@@ -62,6 +62,10 @@ class CheckError(Exception):
     """A finished download did not match its published size or sha256."""
 
 
+class Stopped(Exception):
+    """The run was stopped (Ctrl-C) while this file was downloading; its partial file is kept."""
+
+
 def _open(url, start=0, timeout=60):
     headers = {"Range": f"bytes={start}-"} if start else {}
     return urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=timeout)
@@ -81,11 +85,11 @@ def _resumed(r, start):
     return getattr(r, "status", 200) == 206 and rng.startswith(f"bytes {start}-")
 
 
-def fetch(item, out, retries=3, rehash=False, opener=_open, block=1 << 20, wait=2.0):
+def fetch(item, out, retries=3, rehash=False, opener=_open, block=1 << 20, wait=2.0, stop=None):
     """Download one item into the folder out. Returns "have" when the file is already there with the right size (with
     rehash, also the right sha256) and "got" after a download. Network errors and server errors are retried, each try
     continuing from the bytes already written. Raises CheckError when the downloaded file's size or sha256 is wrong;
-    the partial file is deleted first."""
+    the partial file is deleted first. Raises Stopped soon after the threading.Event stop is set."""
     dst = os.path.join(out, item.path)
     if os.path.exists(dst) and os.path.getsize(dst) == item.size:
         if not rehash or _sha256(dst).hexdigest() == item.sha256:
@@ -105,10 +109,13 @@ def fetch(item, out, retries=3, rehash=False, opener=_open, block=1 << 20, wait=
                     if have and not _resumed(r, have):         # the server sent the whole file: start over
                         have, h = 0, hashlib.sha256()
                     with open(part, "ab" if have else "wb") as f:
-                        while b := r.read(block):
+                        read = getattr(r, "read1", r.read)    # read1 returns what has arrived, read waits for a block
+                        while b := read(block):
                             f.write(b)
                             h.update(b)
                             have += len(b)
+                            if stop is not None and stop.is_set():
+                                raise Stopped(item.path)
                 if have < item.size:                           # read(n) ends quietly when the connection drops
                     raise http.client.IncompleteRead(b"", item.size - have)
             break
@@ -121,7 +128,11 @@ def fetch(item, out, retries=3, rehash=False, opener=_open, block=1 << 20, wait=
             if os.path.exists(part) and os.path.getsize(part) != have:     # a write failed halfway: re-read it
                 have = os.path.getsize(part)
                 h = _sha256(part)
-            time.sleep(min(wait * 2 ** attempt, 60))
+            delay = min(wait * 2 ** attempt, 60)
+            if stop is None:
+                time.sleep(delay)
+            elif stop.wait(delay):
+                raise Stopped(item.path)
     if have != item.size or h.hexdigest() != item.sha256:
         os.remove(part)
         raise CheckError(f"{item.path}: got {have} bytes with sha256 {h.hexdigest()}, "
@@ -163,10 +174,14 @@ def stage(items, out, workers=4, retries=3, rehash=False, opener=_open, log=prin
     lock = threading.Lock()
     res = {"got": 0, "have": 0, "failed": []}
 
+    stop = threading.Event()
+
     def one(it):
         new_version = listed.get(it.path, it.sha256) != it.sha256       # the size alone cannot tell
         try:
-            status = fetch(it, out, retries, rehash or new_version, opener)
+            status = fetch(it, out, retries, rehash or new_version, opener, stop=stop)
+        except Stopped:
+            return
         except Exception as e:                          # report it and let the other files finish
             with lock:
                 res["failed"].append((it.path, f"{type(e).__name__}: {e}"))
@@ -180,8 +195,16 @@ def stage(items, out, workers=4, retries=3, rehash=False, opener=_open, log=prin
                 listed[it.path] = it.sha256
         log(f"{status} {it.path} ({it.size / 1e6:.1f} MB)")
 
-    with ThreadPoolExecutor(max(1, workers)) as ex:
-        list(ex.map(one, items))
+    ex = ThreadPoolExecutor(max(1, workers))
+    try:
+        pending = {ex.submit(one, it) for it in items}
+        while pending:                                  # short waits, so Ctrl-C gets through
+            pending = wait(pending, timeout=0.5).not_done
+    except BaseException:
+        stop.set()                                      # running files stop at their next read and keep their .part
+        raise
+    finally:
+        ex.shutdown(wait=True, cancel_futures=True)
     return res
 
 

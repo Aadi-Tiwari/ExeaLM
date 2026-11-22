@@ -4,6 +4,7 @@ import json
 import os
 import random
 import threading
+import time
 from collections import namedtuple
 from dataclasses import replace
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -39,7 +40,12 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         cut = srv.cut.pop(self.path, None)
-        self.wfile.write(body if cut is None else body[:cut])
+        body = body if cut is None else body[:cut]
+        if not srv.slow:
+            self.wfile.write(body)
+        for i in range(0, len(body) if srv.slow else 0, 4096):
+            self.wfile.write(body[i:i + 4096])
+            time.sleep(srv.slow)
 
     def log_message(self, *args):
         pass
@@ -48,7 +54,7 @@ class Handler(BaseHTTPRequestHandler):
 @pytest.fixture
 def server():
     srv = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-    srv.files, srv.requests, srv.cut, srv.fail, srv.ranges = {}, [], {}, set(), True
+    srv.files, srv.requests, srv.cut, srv.fail, srv.ranges, srv.slow = {}, [], {}, set(), True, 0
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     yield srv
     srv.shutdown()
@@ -403,3 +409,20 @@ def test_a_new_version_of_a_file_is_fetched_even_at_the_same_size(server, tmp_pa
     assert read(tmp_path / "sub" / "v.jsonl") == new
     lines = (tmp_path / "manifest.jsonl").read_text(encoding="utf-8").splitlines()
     assert [json.loads(line)["sha256"] for line in lines] == [it_old.sha256, it_new.sha256]
+
+
+def test_ctrl_c_stops_the_running_files_and_drops_the_queued_ones(server, tmp_path):
+    import _thread
+    items = [add(server, f"slow{i}.jsonl", blob(400_000, 30 + i)) for i in range(4)]
+    server.slow = 0.01                                         # about 0.4 MB/s, so a file takes about a second
+    threading.Timer(0.4, _thread.interrupt_main).start()       # what Ctrl-C does
+    t = time.time()
+    with pytest.raises(KeyboardInterrupt):
+        st.stage(items, str(tmp_path), workers=2, log=lambda s: None)
+    assert time.time() - t < 3
+    assert sorted(p for p, _ in server.requests) == ["/slow0.jsonl", "/slow1.jsonl"]     # the queued two never started
+    parts = [tmp_path / "sub" / f"slow{i}.jsonl.part" for i in (0, 1)]
+    assert all(0 < os.path.getsize(p) < 400_000 for p in parts)                        # kept for the next run
+    server.slow = 0
+    assert st.stage(items, str(tmp_path), workers=2, log=lambda s: None)["got"] == 4
+    assert all(r.startswith("bytes=") for p, r in server.requests[2:] if p in ("/slow0.jsonl", "/slow1.jsonl"))
