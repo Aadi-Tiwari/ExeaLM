@@ -536,3 +536,34 @@ def test_to_jsonl_skips_a_missing_file_and_redoes_an_output_older_than_its_parqu
     os.utime(a_out, (t - 10, t - 10))                              # so the test does not depend on clock resolution
     assert st.to_jsonl(str(staged), str(out), log=logs.append) == {str(a_out): 2}
     assert st.to_jsonl(str(staged), str(out), log=logs.append) == {}
+
+
+def test_an_unlisted_file_that_fails_its_hash_is_deleted_even_when_its_download_fails(server, tmp_path):
+    it = add(server, "z.jsonl", blob(20_000, 55))
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "sub" / "z.jsonl").write_bytes(blob(20_000, 56))     # right size, wrong bytes, no manifest line
+    server.fail.add("/z.jsonl")
+    res = st.stage([it], str(tmp_path), retries=0, log=lambda s: None)
+    assert [p for p, _ in res["failed"]] == ["sub/z.jsonl"]
+    assert not os.path.exists(tmp_path / "sub" / "z.jsonl")
+
+
+def test_a_new_version_finished_from_an_old_partial_file_is_converted_again(server, tmp_path):
+    staged, out = tmp_path / "stage", tmp_path / "raw"
+    write_parquet(str(tmp_path / "v1.parquet"), {"text": ["old"]})
+    write_parquet(str(tmp_path / "v2.parquet"), {"text": ["new"]})
+    v1 = replace(add(server, "a.parquet", read(tmp_path / "v1.parquet")), path="hf/org/set/a.parquet")
+    st.stage([v1], str(staged), log=lambda s: None)
+    v2 = replace(add(server, "a.parquet", read(tmp_path / "v2.parquet")), path="hf/org/set/a.parquet")
+    part = staged / "hf" / "org" / "set" / "a.parquet.part"
+    part.write_bytes(read(tmp_path / "v2.parquet"))          # v2 was fully written, then the run stopped
+    t = os.path.getmtime(part)
+    os.utime(part, (t - 100, t - 100))
+    st.to_jsonl(str(staged), str(out), log=lambda s: None)    # converts v1, after v2's last write
+    server.requests.clear()
+    assert st.stage([v2], str(staged), log=lambda s: None)["got"] == 1
+    assert server.requests == []                              # v2 only needed its rename
+    written = st.to_jsonl(str(staged), str(out), log=lambda s: None)
+    with gzip.open(out / "hf__org__set__a.jsonl.gz", "rt", encoding="utf-8") as f:
+        assert [json.loads(line)["text"] for line in f] == ["new"]
+    assert list(written.values()) == [1]

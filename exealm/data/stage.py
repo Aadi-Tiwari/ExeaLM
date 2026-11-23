@@ -146,6 +146,7 @@ def fetch(item, out, retries=3, rehash=False, opener=_open, block=1 << 20, wait=
         raise CheckError(f"{item.path}: got {have} bytes with sha256 {h.hexdigest()}, "
                          f"expected {item.size} bytes with sha256 {item.sha256}")
     os.replace(part, dst)
+    os.utime(dst)                                       # --to_jsonl compares against when the file got its name
     return "got"
 
 
