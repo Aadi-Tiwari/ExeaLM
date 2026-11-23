@@ -110,9 +110,10 @@ python -m exealm.data.stage --source IFM/Math-Reasoning/math-dialogue --max_gb 1
 `--max_files`, `--max_gb` and `--max_tokens` cap each source on its own, and a capped source keeps files spread
 through its file list. A file is never split: several LLM-jp sources are a single file (en/en_wiki is one 7.46 GB
 file), and the plan prints a note when one file is already over the cap. `--max_tokens` needs a published token
-count, so it works for the LLM-jp paths in `sources.LLMJP` (an estimate: LLM-jp counted with its own tokenizer). K2
-has no published counts, so cap it with `--max_gb`. Run `--plan_only` first: some sources are large
-(IFM/Pretrain-Behaviors is 4,165 files, 8.4 TB).
+count, so it works for the LLM-jp paths in `sources.LLMJP` (an estimate: LLM-jp counted with its own tokenizer)
+except `ja/ja_cc/level0` to `level2`. Those and K2 have no published counts, so cap them with `--max_gb`; mix v0 has
+both, so `--mix v0` takes `--max_gb` or `--max_files`, not `--max_tokens`. Run `--plan_only` first: some sources
+are large (IFM/Pretrain-Behaviors is 4,165 files, 8.4 TB).
 
 LLM-jp files are `.jsonl.gz` with a `text` field, which `exealm.data.quality` reads directly. Hugging Face files stay
 in their own format (parquet for K2). `--to_jsonl` turns the staged parquet files into the same jsonl.gz files
