@@ -340,7 +340,9 @@ def to_jsonl(staged, out, batch=1000, log=print):
     """Turn the staged Hugging Face parquet files listed in staged/manifest.jsonl into jsonl.gz files of {"text",
     "source"} in out: the format download.py writes and quality.py reads. K2 subsets go through their verified
     formatters (rows without text are dropped, and K2 reads only the text column); other datasets use
-    download.extract_text. Finished files are skipped. Returns {output file: documents written} for this run."""
+    download.extract_text. An output newer than its parquet file is skipped, so a new version staged later is converted
+    again; a listed file that is missing is skipped with a note. Returns {output file: documents written} for this
+    run."""
     import pyarrow.parquet as pq
 
     from .download import extract_text
@@ -355,12 +357,16 @@ def to_jsonl(staged, out, batch=1000, log=print):
         repo, subset = "/".join(parts[1:3]), (parts[3] if len(parts) > 4 else None)
         k2 = repo in K2
         fmt = get_k2_formatter(repo, subset) if k2 else extract_text
+        src = os.path.join(staged, *parts)
         dst = os.path.join(out, "hf__" + "__".join(parts[1:])[:-len(".parquet")] + ".jsonl.gz")
-        if os.path.exists(dst):
+        if not os.path.exists(src):
+            log(f"missing {src}, skipped (run the staging command again to fetch it)")
+            continue
+        if os.path.exists(dst) and os.path.getmtime(dst) >= os.path.getmtime(src):
             log(f"have {dst}")
             continue
         source, n = (f"{repo}/{subset}" if subset else repo), 0
-        rows = pq.ParquetFile(os.path.join(staged, *parts)).iter_batches(batch, columns=["text"] if k2 else None)
+        rows = pq.ParquetFile(src).iter_batches(batch, columns=["text"] if k2 else None)
         with gzip.open(dst + ".part", "wt", encoding="utf-8") as fo:
             for b in rows:
                 for row in b.to_pylist():

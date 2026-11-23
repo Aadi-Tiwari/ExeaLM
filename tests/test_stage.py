@@ -519,3 +519,20 @@ def test_disk_check_counts_a_new_version_while_the_old_one_is_kept(server, tmp_p
         st.stage([it_new], str(tmp_path), log=lambda s: None)
     assert server.requests == []
 
+
+def test_to_jsonl_skips_a_missing_file_and_redoes_an_output_older_than_its_parquet(tmp_path):
+    staged, out = tmp_path / "stage", tmp_path / "raw"
+    a, b = "hf/org/set/a.parquet", "hf/org/set/b.parquet"
+    write_parquet(str(staged / a), {"text": ["old a"]})
+    with open(staged / "manifest.jsonl", "w", encoding="utf-8") as f:
+        for path in (a, b):                                   # b was deleted after a failed re-check
+            f.write(json.dumps({"source": "x", "path": path, "url": "u", "size": 1, "sha256": "0"}) + "\n")
+    logs = []
+    a_out = out / "hf__org__set__a.jsonl.gz"
+    assert st.to_jsonl(str(staged), str(out), log=logs.append) == {str(a_out): 1}
+    assert any("b.parquet" in line and "missing" in line for line in logs)
+    write_parquet(str(staged / a), {"text": ["new a", "new a 2"]})     # a new version of a was staged later
+    t = os.path.getmtime(staged / a)
+    os.utime(a_out, (t - 10, t - 10))                              # so the test does not depend on clock resolution
+    assert st.to_jsonl(str(staged), str(out), log=logs.append) == {str(a_out): 2}
+    assert st.to_jsonl(str(staged), str(out), log=logs.append) == {}
