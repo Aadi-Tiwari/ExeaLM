@@ -97,7 +97,8 @@ hosts keep the files in Git LFS, which publishes each file's size and sha256, an
 once both match. Stop it at any point and run the same command again: finished files are skipped and partial ones
 continue from the byte they stopped at. `manifest.jsonl` in the output folder lists every finished file. A file in
 the folder that the manifest does not list with the same sha256 (copied in by hand, or the manifest was deleted) is
-hashed before it counts as finished.
+hashed before it counts as finished. When the host has a new version of a file, the old one stays in place until the
+new one passes its check.
 
 ```bash
 python -m exealm.data.stage --mix v0 --max_files 1 --plan_only       # file count and size of every source, no download

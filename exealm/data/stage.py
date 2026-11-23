@@ -86,16 +86,19 @@ def _resumed(r, start):
     return getattr(r, "status", 200) == 206 and rng.startswith(f"bytes {start}-")
 
 
-def fetch(item, out, retries=3, rehash=False, opener=_open, block=1 << 20, wait=2.0, stop=None):
+def fetch(item, out, retries=3, rehash=False, opener=_open, block=1 << 20, wait=2.0, stop=None, keep_old=False):
     """Download one item into the folder out. Returns "have" when the file is already there with the right size (with
     rehash, also the right sha256) and "got" after a download. Network errors and server errors are retried, each try
     continuing from the bytes already written. Raises CheckError when the downloaded file's size or sha256 is wrong;
-    the partial file is deleted first. Raises Stopped soon after the threading.Event stop is set."""
+    the partial file is deleted first. Raises Stopped soon after the threading.Event stop is set. A file that fails
+    the rehash is deleted before the download, unless keep_old (it is an older version that was checked), in which
+    case it stays until the new file passes its check and replaces it."""
     dst = os.path.join(out, item.path)
     if os.path.exists(dst) and os.path.getsize(dst) == item.size:
         if not rehash or _sha256(dst).hexdigest() == item.sha256:
             return "have"
-        os.remove(dst)
+        if not keep_old:
+            os.remove(dst)
     os.makedirs(os.path.dirname(dst) or ".", exist_ok=True)
     part = dst + ".part"
     have = os.path.getsize(part) if os.path.exists(part) else 0
@@ -161,11 +164,12 @@ def _manifest(path):
     return recs
 
 
-def _missing_bytes(items, out):
+def _missing_bytes(items, out, listed):
     n = 0
     for it in items:
         dst = os.path.join(out, it.path)
-        if os.path.exists(dst) and os.path.getsize(dst) == it.size:
+        old = listed.get(it.path, it.sha256) != it.sha256      # an older version, kept until the new one is checked
+        if not old and os.path.exists(dst) and os.path.getsize(dst) == it.size:
             continue
         part = dst + ".part"
         n += it.size - (min(os.path.getsize(part), it.size) if os.path.exists(part) else 0)
@@ -181,11 +185,11 @@ def stage(items, out, workers=4, retries=3, rehash=False, opener=_open, log=prin
     if len(set(paths)) != len(paths):
         raise ValueError("two items have the same path")
     os.makedirs(out, exist_ok=True)
-    need, free = _missing_bytes(items, out), shutil.disk_usage(out).free
-    if need > free:
-        raise SystemExit(f"{need / 1e9:.1f} GB still to download but only {free / 1e9:.1f} GB free in {out}")
     man = os.path.join(out, "manifest.jsonl")
     listed = {rec["path"]: rec["sha256"] for rec in _manifest(man)}    # path -> sha256 of its last manifest line
+    need, free = _missing_bytes(items, out, listed), shutil.disk_usage(out).free
+    if need > free:
+        raise SystemExit(f"{need / 1e9:.1f} GB still to download but only {free / 1e9:.1f} GB free in {out}")
     if os.path.exists(man) and os.path.getsize(man):
         with open(man, "rb+") as f:
             f.seek(-1, os.SEEK_END)
@@ -199,7 +203,8 @@ def stage(items, out, workers=4, retries=3, rehash=False, opener=_open, log=prin
     def one(it):
         unchecked = listed.get(it.path) != it.sha256    # a new version, or a file this folder never checked
         try:
-            status = fetch(it, out, retries, rehash or unchecked, opener, stop=stop)
+            status = fetch(it, out, retries, rehash or unchecked, opener, stop=stop,
+                           keep_old=unchecked and it.path in listed)
         except Stopped:
             return
         except Exception as e:                          # report it and let the other files finish

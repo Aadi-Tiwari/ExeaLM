@@ -481,3 +481,41 @@ def test_ctrl_c_stops_the_running_files_and_drops_the_queued_ones(server, tmp_pa
     server.slow = 0
     assert st.stage(items, str(tmp_path), workers=2, log=lambda s: None)["got"] == 4
     assert all(r.startswith("bytes=") for p, r in server.requests[2:] if p in ("/slow0.jsonl", "/slow1.jsonl"))
+
+
+def test_a_new_version_that_fails_to_download_leaves_the_old_file_in_place(server, tmp_path):
+    old, new = blob(20_000, 50), blob(20_000, 51)
+    st.stage([add(server, "w.jsonl", old)], str(tmp_path), log=lambda s: None)
+    it_new = add(server, "w.jsonl", new)
+    server.cut["/w.jsonl"] = 5_000
+    res = st.stage([it_new], str(tmp_path), retries=0, log=lambda s: None)
+    assert [p for p, _ in res["failed"]] == ["sub/w.jsonl"]
+    assert read(tmp_path / "sub" / "w.jsonl") == old              # still the version its manifest line names
+    assert os.path.getsize(tmp_path / "sub" / "w.jsonl.part") == 5_000
+    assert st.stage([it_new], str(tmp_path), retries=0, log=lambda s: None)["got"] == 1
+    assert read(tmp_path / "sub" / "w.jsonl") == new
+    assert server.requests[-1] == ("/w.jsonl", "bytes=5000-")
+
+
+def test_a_damaged_file_is_deleted_even_when_its_new_download_fails(server, tmp_path):
+    data = blob(20_000, 52)
+    it = add(server, "x.jsonl", data)
+    st.stage([it], str(tmp_path), log=lambda s: None)
+    damaged = bytearray(data)
+    damaged[7] ^= 1
+    (tmp_path / "sub" / "x.jsonl").write_bytes(bytes(damaged))
+    server.fail.add("/x.jsonl")
+    res = st.stage([it], str(tmp_path), retries=0, rehash=True, log=lambda s: None)
+    assert [p for p, _ in res["failed"]] == ["sub/x.jsonl"]
+    assert not os.path.exists(tmp_path / "sub" / "x.jsonl")      # its manifest line would vouch for it next run
+
+
+def test_disk_check_counts_a_new_version_while_the_old_one_is_kept(server, tmp_path, monkeypatch):
+    st.stage([add(server, "y.jsonl", blob(1_000, 53))], str(tmp_path), log=lambda s: None)
+    it_new = add(server, "y.jsonl", blob(1_000, 54))
+    server.requests.clear()
+    monkeypatch.setattr(st.shutil, "disk_usage", lambda p: namedtuple("U", "total used free")(10, 10, 999))
+    with pytest.raises(SystemExit, match="still to download"):
+        st.stage([it_new], str(tmp_path), log=lambda s: None)
+    assert server.requests == []
+
