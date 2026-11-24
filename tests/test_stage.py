@@ -369,6 +369,8 @@ def test_to_jsonl_formats_staged_parquet_and_skips_the_rest(tmp_path):
         assert [json.loads(line) for line in f] == [{"text": "What is 2+2?\n\n4", "source": "org/qa-set/data"}]
     assert sorted(os.listdir(out)) == sorted([k2_out.name, other_out.name])
     assert st.to_jsonl(str(staged), str(out), log=logs.append) == {}          # a rerun converts nothing
+    os.remove(k2_out)
+    assert st.to_jsonl(str(staged), str(out), log=logs.append) == {str(k2_out): 2}  # a deleted output comes back
 
 
 def test_to_jsonl_refuses_a_k2_folder_without_a_verified_formatter(tmp_path):
@@ -520,7 +522,7 @@ def test_disk_check_counts_a_new_version_while_the_old_one_is_kept(server, tmp_p
     assert server.requests == []
 
 
-def test_to_jsonl_skips_a_missing_file_and_redoes_an_output_older_than_its_parquet(tmp_path):
+def test_to_jsonl_skips_a_missing_file_and_redoes_an_output_made_from_an_older_version(tmp_path):
     staged, out = tmp_path / "stage", tmp_path / "raw"
     a, b = "hf/org/set/a.parquet", "hf/org/set/b.parquet"
     write_parquet(str(staged / a), {"text": ["old a"]})
@@ -531,9 +533,10 @@ def test_to_jsonl_skips_a_missing_file_and_redoes_an_output_older_than_its_parqu
     a_out = out / "hf__org__set__a.jsonl.gz"
     assert st.to_jsonl(str(staged), str(out), log=logs.append) == {str(a_out): 1}
     assert any("b.parquet" in line and "missing" in line for line in logs)
+    assert st.to_jsonl(str(staged), str(out), log=logs.append) == {}
     write_parquet(str(staged / a), {"text": ["new a", "new a 2"]})     # a new version of a was staged later
-    t = os.path.getmtime(staged / a)
-    os.utime(a_out, (t - 10, t - 10))                              # so the test does not depend on clock resolution
+    with open(staged / "manifest.jsonl", "a", encoding="utf-8") as f:
+        f.write(json.dumps({"source": "x", "path": a, "url": "u", "size": 1, "sha256": "1"}) + "\n")
     assert st.to_jsonl(str(staged), str(out), log=logs.append) == {str(a_out): 2}
     assert st.to_jsonl(str(staged), str(out), log=logs.append) == {}
 
@@ -567,3 +570,21 @@ def test_a_new_version_finished_from_an_old_partial_file_is_converted_again(serv
     with gzip.open(out / "hf__org__set__a.jsonl.gz", "rt", encoding="utf-8") as f:
         assert [json.loads(line)["text"] for line in f] == ["new"]
     assert list(written.values()) == [1]
+
+
+def test_a_new_version_with_the_same_timestamp_as_the_old_output_is_converted_again(server, tmp_path):
+    staged, out = tmp_path / "stage", tmp_path / "raw"
+    write_parquet(str(tmp_path / "v1.parquet"), {"text": ["old"]})
+    write_parquet(str(tmp_path / "v2.parquet"), {"text": ["new"]})
+    v1 = replace(add(server, "a.parquet", read(tmp_path / "v1.parquet")), path="hf/org/set/a.parquet")
+    st.stage([v1], str(staged), log=lambda s: None)
+    st.to_jsonl(str(staged), str(out), log=lambda s: None)
+    v2 = replace(add(server, "a.parquet", read(tmp_path / "v2.parquet")), path="hf/org/set/a.parquet")
+    assert st.stage([v2], str(staged), log=lambda s: None)["got"] == 1
+    a, a_out = staged / "hf" / "org" / "set" / "a.parquet", out / "hf__org__set__a.jsonl.gz"
+    t = os.stat(a).st_mtime_ns
+    os.utime(a_out, ns=(t, t))                     # one clock tick covered both writes (Linux, FAT drives)
+    assert st.to_jsonl(str(staged), str(out), log=lambda s: None) == {str(a_out): 1}
+    with gzip.open(a_out, "rt", encoding="utf-8") as f:
+        assert [json.loads(line)["text"] for line in f] == ["new"]
+    assert st.to_jsonl(str(staged), str(out), log=lambda s: None) == {}

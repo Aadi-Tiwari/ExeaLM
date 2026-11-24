@@ -146,7 +146,6 @@ def fetch(item, out, retries=3, rehash=False, opener=_open, block=1 << 20, wait=
         raise CheckError(f"{item.path}: got {have} bytes with sha256 {h.hexdigest()}, "
                          f"expected {item.size} bytes with sha256 {item.sha256}")
     os.replace(part, dst)
-    os.utime(dst)                                       # --to_jsonl compares against when the file got its name
     return "got"
 
 
@@ -341,14 +340,17 @@ def to_jsonl(staged, out, batch=1000, log=print):
     """Turn the staged Hugging Face parquet files listed in staged/manifest.jsonl into jsonl.gz files of {"text",
     "source"} in out: the format download.py writes and quality.py reads. K2 subsets go through their verified
     formatters (rows without text are dropped, and K2 reads only the text column); other datasets use
-    download.extract_text. An output newer than its parquet file is skipped, so a new version staged later is converted
-    again; a listed file that is missing is skipped with a note. Returns {output file: documents written} for this
-    run."""
+    download.extract_text. staged/converted.jsonl records the sha256 of the parquet file each output was made from, and
+    an output is skipped only when that matches the manifest, so a new version staged later is converted again (file
+    times cannot tell them apart: two writes in one clock tick get the same time). A listed file that is missing is
+    skipped with a note. Returns {output file: documents written} for this run."""
     import pyarrow.parquet as pq
 
     from .download import extract_text
     from .formatters import get_k2_formatter
     entries = list({e["path"]: e for e in _manifest(os.path.join(staged, "manifest.jsonl"))}.values())  # last wins
+    record = os.path.join(staged, "converted.jsonl")
+    made_from = {r["out"]: r["sha256"] for r in _manifest(record)}
     os.makedirs(out, exist_ok=True)
     written = {}
     for e in entries:
@@ -363,7 +365,8 @@ def to_jsonl(staged, out, batch=1000, log=print):
         if not os.path.exists(src):
             log(f"missing {src}, skipped (run the staging command again to fetch it)")
             continue
-        if os.path.exists(dst) and os.path.getmtime(dst) >= os.path.getmtime(src):
+        key = os.path.abspath(dst)
+        if os.path.exists(dst) and made_from.get(key) == e["sha256"]:
             log(f"have {dst}")
             continue
         source, n = (f"{repo}/{subset}" if subset else repo), 0
@@ -376,6 +379,8 @@ def to_jsonl(staged, out, batch=1000, log=print):
                         fo.write(json.dumps({"text": text, "source": source}, ensure_ascii=False) + "\n")
                         n += 1
         os.replace(dst + ".part", dst)
+        with open(record, "a", encoding="utf-8") as f:
+            f.write(json.dumps({"out": key, "sha256": e["sha256"]}, ensure_ascii=False) + "\n")
         written[dst] = n
         log(f"wrote {n} documents to {dst}")
     return written

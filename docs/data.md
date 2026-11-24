@@ -117,8 +117,9 @@ are large (IFM/Pretrain-Behaviors is 4,165 files, 8.4 TB).
 
 LLM-jp files are `.jsonl.gz` with a `text` field, which `exealm.data.quality` reads directly. Hugging Face files stay
 in their own format (parquet for K2). `--to_jsonl` turns the staged parquet files into the same jsonl.gz files
-`exealm.data.download` writes, through the verified K2 formatters, so step 2 above reads them. A rerun skips outputs
-that are newer than their parquet file, so only new files and new versions are converted:
+`exealm.data.download` writes, through the verified K2 formatters, so step 2 above reads them. `converted.jsonl` in
+the staging folder records the sha256 of the parquet file each output came from, and a rerun skips an output only when
+that matches the manifest, so only new files, new versions and deleted outputs are converted:
 
 ```bash
 python -m exealm.data.stage --out data/stage --to_jsonl data/raw
